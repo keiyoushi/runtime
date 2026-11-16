@@ -45,7 +45,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew --no-configuration-cache -Pruntime.requireSigning=true \
-            "-Pruntime.storeBaseUrl=https://raw.githubusercontent.com/$GITHUB_REPOSITORY/repo" \
+            "-Pruntime.storeUrl=https://github.com/$GITHUB_REPOSITORY/raw/repo/index.pb" \
             testDebugUnitTest assembleRelease
 
       - name: Remove the decoded key
@@ -85,11 +85,11 @@ jobs:
             --apk "$apk" \
             --info host/build/outputs/runtime-info.json \
             --out repo \
-            --base-url "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/repo" \
+            --icon-url "https://cdn.jsdelivr.net/gh/$GITHUB_REPOSITORY@$GITHUB_REF_NAME/host/res/mipmap-xhdpi/ic_launcher.png" \
             --release-url "$remote/releases/download/$GITHUB_REF_NAME" \
             --expect-fingerprint .github/signing-key-fingerprint
 
-      # Before the store moves, so it never points at a missing APK
+      # Before the store moves, so its apkUrl never points at a missing asset
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,7 +101,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Keiyoushi Runtime $name" \
-            --notes "Install the APK, open Keiyoushi Runtime and tap Add update store. SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
+            --notes "Mihon only. Install the APK, open Keiyoushi Runtime and tap Add update store to Mihon. Setup: https://keiyoushi.github.io/runtime. SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
 
       - name: Push the store
         env:

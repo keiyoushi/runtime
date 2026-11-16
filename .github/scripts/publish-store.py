@@ -4,12 +4,11 @@
         --info host/build/outputs/runtime-info.json --out repo \
         --release-url https://github.com/keiyoushi/runtime/releases/download/v<versionCode>
 
-Output, all in --out (anything else there is removed, except .git):
-- index.pb (gzipped) and index.json: the v2 index, read by Mihon and forks that have caught up with it
-- repo.json: the legacy store metadata; its `index_v2` sends v2 apps on to index.pb
-- index.min.json: the legacy extension list, the URL users add (apps without v2 read only this)
-- apk/<apk>: legacy apps download from <store>/apk/<apk>; v2 apps take the GitHub Release asset
-- icon/<package>.png
+Output, all in --out (anything else there is removed, except .git), as keiyoushi's publish-repo.py
+writes its store:
+- index.pb (gzipped): the v2 index Mihon reads; users add <repo branch>/index.pb
+- index.json: the same index as protobuf JSON, for people
+The APK downloads from the GitHub Release (apkUrl); the icon from the tagged source tree (iconUrl).
 """
 
 import argparse
@@ -31,7 +30,7 @@ STORE_NAME = "Keiyoushi Runtime"
 BADGE = "KEI RT"
 WEBSITE = "https://github.com/keiyoushi/runtime"
 DISCORD = "https://discord.gg/3FbCpdKbdY"
-DEFAULT_BASE_URL = "https://raw.githubusercontent.com/keiyoushi/runtime/repo"
+DEFAULT_ICON_URL = "https://cdn.jsdelivr.net/gh/keiyoushi/runtime@main/host/res/mipmap-xhdpi/ic_launcher.png"
 
 
 def build_tool(name: str, build_tools: str | None) -> str:
@@ -80,15 +79,13 @@ def main() -> None:
     parser.add_argument("--info", type=Path, required=True, help="host/build/outputs/runtime-info.json")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--release-url", required=True, help="where the release's assets download from")
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="where --out is served")
-    parser.add_argument("--icon", type=Path, default=Path("host/res/mipmap-xhdpi/ic_launcher.png"))
+    parser.add_argument("--icon-url", default=DEFAULT_ICON_URL, help="the launcher icon in the source tree")
     parser.add_argument("--fingerprint", help="the APK's SHA-256 cert digest; read with apksigner when unset")
     parser.add_argument("--expect-fingerprint", type=Path, help="file holding the digest the APK must be signed with")
     parser.add_argument("--build-tools", help="Android build-tools dir (default: newest under ANDROID_HOME)")
     args = parser.parse_args()
 
     info = json.loads(args.info.read_text(encoding="utf-8"))
-    base_url = args.base_url.rstrip("/")
     package = info["packageName"]
     source = info["source"]
 
@@ -106,18 +103,12 @@ def main() -> None:
             continue
         shutil.rmtree(child) if child.is_dir() else child.unlink()
 
-    (out / "apk").mkdir()
-    shutil.copyfile(args.apk, out / "apk" / args.apk.name)
-    (out / "icon").mkdir()
-    shutil.copyfile(args.icon, out / "icon" / f"{package}.png")
-    icon_url = f"{base_url}/icon/{package}.png"
-
     extension = index_pb2.Extension(
         name=info["name"],
         packageName=package,
         resources=index_pb2.Resources(
             apkUrl=f"{args.release_url.rstrip('/')}/{args.apk.name}",
-            iconUrl=icon_url,
+            iconUrl=args.icon_url,
         ),
         extensionLib=info["extensionLib"],
         versionCode=info["versionCode"],
@@ -134,6 +125,8 @@ def main() -> None:
         ],
         runtimeProvides={name: module["api"] for name, module in info["modules"].items()},
     )
+    # Mihon: data/.../NetworkExtensionStore `signingKey` (field 3). Adding the store trusts APKs
+    # signed with it (TrustExtension.isTrusted), so the runtime installs without a trust prompt
     index = index_pb2.Index(
         name=STORE_NAME,
         badgeLabel=BADGE,
@@ -153,41 +146,7 @@ def main() -> None:
     )
     (out / "index.pb").write_bytes(gzip.compress(index.SerializeToString(deterministic=True), mtime=0))
 
-    # Mihon: data/.../NetworkLegacyExtensionRepo (`index_v2`, `meta`)
-    repo = {
-        "meta": {
-            "name": STORE_NAME,
-            "shortName": BADGE,
-            "website": WEBSITE,
-            "signingKeyFingerprint": fingerprint,
-        },
-        "index_v2": f"{base_url}/index.pb",
-    }
-    (out / "repo.json").write_text(json.dumps(repo, indent=2) + "\n", encoding="utf-8")
-
-    # Mihon: data/.../NetworkLegacyExtension; the apps read lib 1.6 from "version" (1.6.<code>)
-    legacy = [
-        {
-            "name": f"Tachiyomi: {info['name']}",
-            "pkg": package,
-            "apk": args.apk.name,
-            "lang": source["lang"],
-            "code": info["versionCode"],
-            "version": info["versionName"],
-            "nsfw": 0,
-            "sources": [
-                {
-                    "id": int(source["id"]),
-                    "lang": source["lang"],
-                    "name": source["name"],
-                    "baseUrl": WEBSITE,
-                }
-            ],
-        }
-    ]
-    (out / "index.min.json").write_text(json.dumps(legacy, separators=(",", ":")) + "\n", encoding="utf-8")
-
-    print(f"{package} {info['versionName']} ({info['versionCode']}), key {fingerprint}: {base_url}/index.min.json")
+    print(f"{package} {info['versionName']} ({info['versionCode']}), key {fingerprint}: {extension.resources.apkUrl}")
 
 
 if __name__ == "__main__":
