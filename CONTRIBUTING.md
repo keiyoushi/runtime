@@ -45,9 +45,8 @@ A debug build has the same package as the released runtime (`keiyoushi.runtime`)
 with your debug key, so Android won't install it over a release install. Uninstall the runtime
 you got from the store or a release first, then run **Runtime (debug)**, or install the APK from
 `host/build/outputs/apk/debug/`. The key isn't the store's, so Mihon lists the runtime as
-untrusted: trust it in Browse → Extensions. Mihon restarts when the runtime is installed or
-updated, since it has the runtime loaded. To go back to releases, uninstall the debug build and
-install from the store again.
+untrusted: trust it in Browse → Extensions. To go back to releases, uninstall the debug build
+and install from the store again.
 
 Debug builds include the `hello` fixture module; release builds don't.
 

@@ -32,9 +32,6 @@ https://github.com/keiyoushi/runtime/raw/repo/index.pb
 
 then install **Keiyoushi Runtime** from Browse → Extensions.
 
-Updating or uninstalling the runtime restarts Mihon. That is expected: Mihon has the runtime
-loaded.
-
 ## Contributing
 
 Building, testing and adding modules: [CONTRIBUTING.md](CONTRIBUTING.md).
