@@ -4,13 +4,13 @@
     <!-- What the apps look for in an extension, as keiyoushi's ExtensionPlugin writes it -->
     <uses-feature android:name="tachiyomi.extension" />
 
-    <!-- The launcher screen lists the apps that can add the update store -->
+    <!-- The launcher screen lists the apps that take Mihon's add-store link -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data
-                android:host="add-repo"
-                android:scheme="tachiyomi" />
+                android:host="extension-store"
+                android:scheme="mihon" />
         </intent>
     </queries>
 

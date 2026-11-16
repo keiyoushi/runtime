@@ -70,7 +70,7 @@ class HostPlugin : Plugin<Project> {
             add("testImplementation", libs.library("junit"))
         }
 
-        val storeBaseUrl = providers.gradleProperty("runtime.storeBaseUrl")
+        val storeUrl = providers.gradleProperty("runtime.storeUrl")
         val signing = Signing(this)
 
         extensions.configure<ApplicationExtension> {
@@ -104,7 +104,7 @@ class HostPlugin : Plugin<Project> {
                 android.defaultConfig.versionName = versionName
                 android.defaultConfig.manifestPlaceholders["extName"] = host.name.get()
                 android.defaultConfig.manifestPlaceholders["libVersion"] = host.libVersion.get()
-                android.defaultConfig.buildConfigField("String", "STORE_BASE_URL", "\"${storeBaseUrl.get().trimEnd('/')}\"")
+                android.defaultConfig.buildConfigField("String", "STORE_URL", "\"${storeUrl.get()}\"")
                 android.defaultConfig.buildConfigField("String", "RUNTIME_NAME", "\"${host.name.get()}\"")
             }
 

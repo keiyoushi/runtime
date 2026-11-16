@@ -33,14 +33,14 @@ import keiyoushi.runtime.BuildConfig;
 
 /**
  * The screen the launcher opens: the installed version, the modules with their API levels, one
- * button per reader app that adds the runtime's update store to it, and the licenses. Plain Java
+ * button per installed Mihon build that adds the runtime's update store to it, and the licenses. Plain Java
  * on framework views: in the runtime's own process no app provides the Kotlin stdlib.
  */
 public final class LauncherActivity extends Activity {
-    /** The legacy add-store deep link: every fork of the app takes it */
-    private static final String ADD_STORE_SCHEME = "tachiyomi";
+    /** Mihon's add-store deep link (mihon://extension-store?url=<index>) */
+    private static final String ADD_STORE_SCHEME = "mihon";
 
-    private static final String ADD_STORE_HOST = "add-repo";
+    private static final String ADD_STORE_HOST = "extension-store";
 
     /** The repository's LICENSE, packaged by build-logic's RuntimeLicenseTask */
     private static final String RUNTIME_LICENSE_ASSET = "LICENSE";
@@ -49,7 +49,7 @@ public final class LauncherActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        String indexUrl = BuildConfig.STORE_BASE_URL + "/index.min.json";
+        String indexUrl = BuildConfig.STORE_URL;
         Intent addStore = new Intent(
                 Intent.ACTION_VIEW,
                 new Uri.Builder()
@@ -82,15 +82,15 @@ public final class LauncherActivity extends Activity {
 
         column.addView(space());
         column.addView(text(
-                "Extensions use this runtime for shared code. Add its update store to your reader app, "
-                        + "and the app updates the runtime like any other extension.",
+                "Extensions use this runtime for shared code. Add its update store to Mihon, "
+                        + "and Mihon updates the runtime like any other extension.",
                 16,
                 false));
 
         if (handlers.isEmpty()) {
             column.addView(text(
-                    "No installed app can add extension stores. Install Mihon or a fork of it, "
-                            + "or add the store below by hand.",
+                    "Mihon isn't installed. Install Mihon, then open this screen again "
+                            + "or add the store below in Mihon by hand.",
                     14,
                     false));
         }
@@ -132,7 +132,7 @@ public final class LauncherActivity extends Activity {
         setContentView(scroll);
     }
 
-    /** The apps that take the add-store link, one activity per app */
+    /** The apps that take Mihon's add-store link, one activity per app */
     private List<ResolveInfo> handlers(Intent intent) {
         PackageManager pm = getPackageManager();
         List<ResolveInfo> found = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -151,7 +151,7 @@ public final class LauncherActivity extends Activity {
 
     /**
      * A button that adds the store to one app, named and drawn as the app itself: the handlers'
-     * own labels are all "Add extension store", which can't tell two forks apart
+     * own labels are all "Add extension store", which can't tell two Mihon builds apart
      */
     private Button addStoreButton(Intent addStore, ResolveInfo handler) {
         PackageManager pm = getPackageManager();
