@@ -14,7 +14,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven(url = "https://www.jitpack.io")
+        maven(url = "https://www.jitpack.io") {
+            // Only com.github.* (extensions-lib, injekt) resolves from JitPack
+            content { includeGroupByRegex("com\\.github\\..+") }
+        }
     }
 }
 
