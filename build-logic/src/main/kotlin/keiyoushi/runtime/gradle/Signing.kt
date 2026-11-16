@@ -6,7 +6,8 @@ import org.gradle.api.Project
 import java.util.Base64
 
 /**
- * Release signing from the environment, v2 + v3 (v3 so the key can be rotated later):
+ * Release signing from the environment, v2 + v3. The release key is permanent: nothing here
+ * rotates it, and changing it means every user uninstalls and reinstalls the runtime. It reads:
  * - `KEYSTORE_PATH`, or `KEYSTORE_B64` (the keystore, base64)
  * - `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (defaults to the store password)
  *

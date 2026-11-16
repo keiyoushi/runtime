@@ -106,11 +106,32 @@ PR checks do), sign it with the debug key:
 ## Release
 
 1. Merge a PR that raises `versionCode`. CI checks that it exceeds the latest release's.
-2. Push the tag `v<versionCode>`. `release.yml` builds and signs the APK, creates the GitHub
-   Release with the APK and its SHA-256, and rewrites the `repo` branch (the update store:
-   `index.pb` and `index.json`, whose apkUrl is the Release asset).
-   JitPack builds the `contract` and `api-*` artifacts for the tag when someone first requests
-   them.
+2. Push the tag `v<versionCode>` on that commit in `main`. `release.yml` first checks that the
+   tag matches `versionCode`, that its commit is on `main` and that `versionCode` exceeds the
+   latest release's, before it reads any secret. It then runs the tests, builds and signs the
+   APK, drafts the GitHub Release with the APK and its SHA-256, rewrites the `repo` branch (the
+   update store: `index.pb` and `index.json`, whose apkUrl is the Release asset) and publishes
+   the Release last.
+3. If the run fails, re-run it. A release or draft for the same tag counts as that run's own,
+   so the re-run finishes it.
 
-The store refuses an APK signed with any key other than the one in
-`.github/signing-key-fingerprint`. If the key changes, every user has to uninstall and reinstall.
+JitPack builds the `contract` and `api-*` artifacts for a tag when someone first requests them
+(`jitpack.yml`; PR checks run the same `publishToMavenLocal`). Consumers can also request a
+commit hash instead of a tag (`com.github.keiyoushi.runtime:contract:<commit>`), so a fix to
+the published libraries alone doesn't need a runtime release.
+
+The signing secrets (`KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) belong in
+the `release` environment (Settings → Environments), not in the repository's secrets. A repo
+admin creates that environment, limits its deployments to `v*` tags, and moves the secrets
+there; a tag ruleset can also restrict who creates `v*` tags.
+
+## Signing
+
+The release key is permanent. Android installs an update only when it is signed with the same
+key, so changing the key means every user uninstalls and reinstalls the runtime. APKs are signed
+with v2 and v3 signatures, but nothing rotates the key.
+
+The keiyoushi org key must be in place before the first release: its four secrets in the
+`release` environment and its SHA-256 certificate digest in `.github/signing-key-fingerprint`.
+The store refuses an APK signed with any other key, and the release refuses the scaffold's
+temporary key (`CN=Keiyoushi Runtime TEMP`) outright.
