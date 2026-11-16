@@ -54,17 +54,17 @@ class HostPlugin : Plugin<Project> {
                     name = module.name.get(),
                     api = module.api.get(),
                     minApi = module.minApi.get(),
-                    testFixture = module.testFixture.get(),
                 ) to project
             }
         val duplicates = modules.groupBy { it.first.name }.filterValues { it.size > 1 }.keys
         check(duplicates.isEmpty()) { "Modules declared more than once: $duplicates" }
+        val registry = modules.map { it.first.encode() }
 
         dependencies {
             add("implementation", project(":contract"))
             add("compileOnly", libs.bundle("provided"))
-            modules.forEach { (spec, project) ->
-                add(if (spec.testFixture) "debugImplementation" else "implementation", project(project.path))
+            modules.forEach { (_, project) ->
+                add("implementation", project(project.path))
             }
             add("testImplementation", libs.bundle("provided"))
             add("testImplementation", libs.library("junit"))
@@ -109,9 +109,8 @@ class HostPlugin : Plugin<Project> {
             }
 
             onVariants { variant ->
-                val variantModules = modules.map { it.first }.filter { !it.testFixture || variant.buildType == "debug" }
                 val generate = tasks.register<GenerateRegistryTask>("generate${variant.name.capitalized()}RuntimeRegistry") {
-                    this.modules.set(variantModules.map { it.encode() })
+                    this.modules.set(registry)
                     licenses.from(layout.projectDirectory.dir("assets/licenses").asFileTree.matching { include("*.txt") })
                     outputDir.set(layout.buildDirectory.dir("generated/runtime/${variant.name}"))
                 }
@@ -137,7 +136,7 @@ class HostPlugin : Plugin<Project> {
                         versionCode.set(host.versionCode)
                         libVersion.set(host.libVersion)
                         sourceId.set(host.name.map { computeSourceId(it, "all") })
-                        this.modules.set(variantModules.map { it.encode() })
+                        this.modules.set(registry)
                         outputFile.set(layout.buildDirectory.file("outputs/runtime-info.json"))
                     }
                     tasks.matching { it.name == "assembleRelease" }.configureEach { dependsOn(info) }
@@ -149,11 +148,11 @@ class HostPlugin : Plugin<Project> {
     }
 }
 
-internal data class ModuleSpec(val name: String, val api: Int, val minApi: Int, val testFixture: Boolean) {
+internal data class ModuleSpec(val name: String, val api: Int, val minApi: Int) {
     fun encode() = "$name:$api:$minApi"
 
     companion object {
-        fun decode(value: String) = value.split(':').let { (name, api, minApi) -> ModuleSpec(name, api.toInt(), minApi.toInt(), false) }
+        fun decode(value: String) = value.split(':').let { (name, api, minApi) -> ModuleSpec(name, api.toInt(), minApi.toInt()) }
     }
 }
 

@@ -24,9 +24,6 @@ abstract class RuntimeModuleExtension {
     abstract val name: Property<String>
     abstract val api: Property<Int>
     abstract val minApi: Property<Int>
-
-    /** Only in debug builds of the host: modules that exist to test the plumbing */
-    abstract val testFixture: Property<Boolean>
 }
 
 internal val MODULE_NAME = Regex("[a-z][a-z0-9]*")
@@ -39,7 +36,6 @@ class ModulePlugin : Plugin<Project> {
         val module = extensions.create<RuntimeModuleExtension>("runtimeModule")
         module.name.convention(project.name)
         module.minApi.convention(1)
-        module.testFixture.convention(false)
 
         extensions.configure<LibraryAndroidComponentsExtension> {
             finalizeDsl { android ->

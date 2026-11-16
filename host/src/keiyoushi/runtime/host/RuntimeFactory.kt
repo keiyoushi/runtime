@@ -12,14 +12,17 @@ import keiyoushi.runtime.BuildConfig
  */
 class RuntimeFactory : SourceFactory {
     init {
-        RuntimeHost.register(
-            versionCode = BuildConfig.VERSION_CODE,
-            versionName = BuildConfig.VERSION_NAME,
-            apis = BuildModules.NAMES.zip(BuildModules.APIS.toList()).toMap(),
-            minApis = BuildModules.NAMES.zip(BuildModules.MIN_APIS.toList()).toMap(),
-            entries = BuildModules.NAMES.zip(BuildModules.entries()).toMap(),
-        )
+        registerModules(BuildModules.NAMES, BuildModules.APIS, BuildModules.MIN_APIS, BuildModules.entries())
     }
 
     override fun createSources(): List<Source> = emptyList()
 }
+
+/** Registers the modules of a generated registry: parallel arrays, as `BuildModules` holds them */
+internal fun registerModules(names: Array<String>, apis: IntArray, minApis: IntArray, entries: Array<Any>) = RuntimeHost.register(
+    versionCode = BuildConfig.VERSION_CODE,
+    versionName = BuildConfig.VERSION_NAME,
+    apis = names.zip(apis.toList()).toMap(),
+    minApis = names.zip(minApis.toList()).toMap(),
+    entries = names.zip(entries).toMap(),
+)

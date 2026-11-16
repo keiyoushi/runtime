@@ -36,9 +36,6 @@ host/            the APK: extension metadata, the extension's factory, the launc
 build-logic/     Gradle conventions: library, module, host, publishing, signing
 ```
 
-`api/hello` and `modules/hello` are a test fixture: they check the module plumbing, and only
-debug builds include them.
-
 ## Test in Mihon
 
 A debug build has the same package as the released runtime (`keiyoushi.runtime`) but is signed
@@ -47,8 +44,6 @@ you got from the store or a release first, then run **Runtime (debug)**, or inst
 `host/build/outputs/apk/debug/`. The key isn't the store's, so Mihon lists the runtime as
 untrusted: trust it in Browse → Extensions. To go back to releases, uninstall the debug build
 and install from the store again.
-
-Debug builds include the `hello` fixture module; release builds don't.
 
 ## Add a module
 
@@ -78,7 +73,7 @@ Debug builds include the `hello` fixture module; release builds don't.
 3. The entry point is `object Entry` in package `keiyoushi.runtime.<name>`
    (`modules/<name>/src/keiyoushi/runtime/<name>/Entry.kt`), implementing the api's interfaces.
 4. Add a contract test that registers `Entry` with `RuntimeHost.register` and binds the api
-   through `RuntimeModule("<name>", api).bind<...>()`, as `modules/hello/test` does. A green
+   through `RuntimeModule("<name>", api).bind<...>()`, as `modules/webviewpatch/test/` does. A green
    bind means every contract function resolves to the module's implementation.
 5. If the module bundles a library, add its license as `host/assets/licenses/<library>.txt`. The
    launcher screen lists it next to the runtime's own license.
