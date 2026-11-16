@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="add_to">Add to %1$s</string>
+    <string name="add_to_package">Add to %1$s\n%2$s</string>
+    <string name="add_store_description">Add %1$s update store to %2$s</string>
+    <string name="install_mihon">Install Mihon, then open this again to add the store.</string>
+    <string name="open_failed">Couldn\'t open %1$s</string>
+    <string name="licenses">Licenses</string>
+    <string name="details">Details</string>
+    <string name="modules">Modules</string>
+    <string name="no_modules">None in this build</string>
+    <string name="api">API %1$d</string>
+    <string name="api_range">API %1$d, serves %2$d to %3$d</string>
+    <string name="update_store">Update store</string>
+    <string name="copy_address">Copy address</string>
+    <string name="address_copied">Address copied</string>
+    <string name="version">Version</string>
+    <string name="version_code">Version code %1$d</string>
+    <string name="back">Back</string>
+</resources>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- No system dark mode before Android 10. The launcher draws its own title and colours its bars itself. -->
+    <!-- No system dark mode before Android 10. The launcher draws its own title. -->
     <style name="Theme.Runtime" parent="android:Theme.DeviceDefault.Light.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>
