@@ -11,3 +11,7 @@
 
 # The contract's own consumer rules (contract/proguard-rules.pro) keep the contract interfaces'
 # methods and @Throws, so Entry's overrides keep their names.
+
+# The launcher (plain Java, run without the Kotlin stdlib) reads this generated class: keep R8 from
+# merging Kotlin helpers into it
+-keep class keiyoushi.runtime.host.BuildModules { *; }
