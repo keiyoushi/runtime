@@ -11,3 +11,5 @@ build/
 *.keystore
 # Output of .github/scripts/publish-store.py when run locally
 /repo/
+# Python bytecode from .github/scripts
+__pycache__/
