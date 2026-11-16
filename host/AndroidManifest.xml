@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- What the apps look for in an extension, as keiyoushi's ExtensionPlugin writes it -->
+    <uses-feature android:name="tachiyomi.extension" />
+
+    <!-- The launcher screen lists the apps that can add the update store -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data
+                android:host="add-repo"
+                android:scheme="tachiyomi" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Tachiyomi: ${extName}">
+        <meta-data
+            android:name="tachiyomix.name"
+            android:value="${extName}" />
+        <meta-data
+            android:name="tachiyomi.extension.class"
+            android:value="keiyoushi.runtime.host.RuntimeFactory" />
+        <meta-data
+            android:name="tachiyomi.extension.nsfw"
+            android:value="0" />
+        <meta-data
+            android:name="tachiyomix.contentWarning"
+            android:value="0" />
+        <meta-data
+            android:name="tachiyomix.extensionLib"
+            android:value="${libVersion}" />
+
+        <activity
+            android:name="keiyoushi.runtime.host.LauncherActivity"
+            android:exported="true"
+            android:label="${extName}"
+            android:theme="@style/Theme.Runtime">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
