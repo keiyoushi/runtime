@@ -7,6 +7,7 @@ import org.gradle.api.provider.Property
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.project
 
 /**
  * ```

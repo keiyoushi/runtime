@@ -9,6 +9,7 @@ import org.gradle.api.provider.Property
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.project
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.register
 import java.security.MessageDigest
@@ -63,7 +64,7 @@ class HostPlugin : Plugin<Project> {
             add("implementation", project(":contract"))
             add("compileOnly", libs.bundle("provided"))
             modules.forEach { (spec, project) ->
-                add(if (spec.testFixture) "debugImplementation" else "implementation", project)
+                add(if (spec.testFixture) "debugImplementation" else "implementation", project(project.path))
             }
             add("testImplementation", libs.bundle("provided"))
             add("testImplementation", libs.library("junit"))
