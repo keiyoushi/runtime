@@ -5,24 +5,13 @@ import keiyoushi.runtime.webviewpatch.LoopbackProbe.Result.PRESENT
 import keiyoushi.runtime.webviewpatch.LoopbackProbe.Result.STRIPPED
 import keiyoushi.runtime.webviewpatch.XrwStripper.Outcome.NO_LIB
 import keiyoushi.runtime.webviewpatch.XrwStripper.Outcome.SETTLED
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Characterization tests for the [XrwStripEngine] state machine, driven off-device through fakes for its three
@@ -483,46 +472,6 @@ class XrwStripEngineTest {
         assertFalse(f.shared.hasPending())
     }
 
-    @Test
-    fun `no run active at completion promotes over the grace window, an active run blocks it`() = runTest {
-        // When the run that hosted the attempt has already ended (nothing active at completion), no completion
-        // hook is left to host the promotion, so the grace path promotes the build — otherwise it stays
-        // UNCONFIRMED and is re-located and re-self-tested on every launch. While a run is still active, the grace
-        // path is not taken; that run's own hook will promote when it ends. Driven on the test's virtual clock, so
-        // the grace window is exercised deterministically with no real-time sleep deciding the outcome.
-        for (runActive in listOf(false, true)) {
-            val f = Fixture()
-            f.ops.seed(LIVE, VERIFY)
-            val runJob = Job().apply { if (!runActive) complete() }
-            val waiters = ConcurrentHashMap.newKeySet<Job>().apply { add(runJob) }
-            val attempt = CompletableDeferred(f.patch())
-            val grace = 40.milliseconds
-
-            promoteOnAttemptCompletion(attempt, waiters, this, grace, { true }) {
-                f.engine().markRunSurvived()
-            }
-
-            if (runActive) {
-                // The grace path is never taken while a run is active, so advancing past the window changes nothing.
-                advanceTimeBy(grace * 3)
-                runCurrent()
-                assertEquals("not promoted while a run is active", "unconfirmed@1", f.map["sha.S1"])
-                assertTrue(f.shared.hasPending())
-            } else {
-                // Not promoted before the grace window elapses...
-                advanceTimeBy(grace / 2)
-                runCurrent()
-                assertEquals("not promoted before the grace window elapses", "unconfirmed@1", f.map["sha.S1"])
-                assertTrue(f.shared.hasPending())
-                // ...then the grace path promotes once the window passes and no run can host it.
-                advanceUntilIdle()
-                assertEquals("the grace path promotes once no run can host it", OK1, f.map["sha.S1"])
-                assertEquals("1000", f.map["okapply.S1"])
-                assertFalse(f.shared.hasPending())
-            }
-        }
-    }
-
     // ---- promote on survival: the full fresh -> pending -> promote -> restart story ----
 
     @Test
@@ -583,34 +532,26 @@ class XrwStripEngineTest {
     }
 
     @Test
-    fun `a run active at the attempt's completion promotes when it later ends (B3)`() {
-        // B3's root: the only caller of promote was the run's completion hook, and the run ended before pending
-        // was set, so nothing promoted. In the real flow Entry.apply awaits the attempt before returning, so the
-        // run is still active when the attempt completes with pending set; promoteOnAttemptCompletion registers
-        // that run's completion hook, which promotes when the run ends. This models that ordering with a real Job
-        // (Entry itself needs Android: WebView warm-up + XrwStripper).
+    fun `the run that held the patch promotes when it ends (B3)`() {
+        // B3's root: nothing promoted because the run ended before pending was set. Entry.apply returns only after
+        // the patch is applied and pending is set, then wires the run's completion to promote. This models that
+        // ordering with a real Job (Entry itself needs Android: WebView warm-up + XrwStripper).
         val f = Fixture()
         f.ops.seed(LIVE, VERIFY)
-        val runJob = Job()
-        val waiters = ConcurrentHashMap.newKeySet<Job>().apply { add(runJob) }
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-        // apply() awaits the attempt, so pending is set while the run is still active.
-        val attempt = CompletableDeferred(f.patch())
+        assertEquals(SETTLED, f.patch())
         assertEquals("unconfirmed@1", f.map["sha.S1"])
         assertTrue(f.shared.hasPending())
 
-        // The attempt completes with the run active: its hook owns promotion, nothing fires yet.
-        promoteOnAttemptCompletion(attempt, waiters, scope, 40.milliseconds, { true }) { f.engine().markRunSurvived() }
+        // The run is still active when apply returns, so wiring it promotes nothing yet.
+        val runJob = Job()
+        runJob.invokeOnCompletion { f.engine().markRunSurvived() }
         assertEquals("not promoted while the run is active", "unconfirmed@1", f.map["sha.S1"])
         assertTrue(f.shared.hasPending())
 
-        // The run completes AFTER pending was set -> its hook fires -> promotion happens, exactly once.
+        // The run ends -> its hook fires -> promotion happens, exactly once.
         runJob.complete()
         assertEquals(OK1, f.map["sha.S1"])
         assertFalse("takePending is atomic, so no second promote", f.shared.hasPending())
-
-        scope.cancel()
     }
 
     companion object {
