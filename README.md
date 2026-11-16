@@ -15,7 +15,9 @@ The runtime works with [Mihon](https://mihon.app) only. Setup help:
 [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).
 
 1. Download the APK from the [latest release](https://github.com/keiyoushi/runtime/releases/latest)
-   (or from the docs page) and install it.
+   (always the newest:
+   [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk),
+   or from the docs page) and install it.
 2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store to Mihon** (each
    installed Mihon build gets its own button). Mihon adds the runtime's store and from then on
    updates the runtime like any other extension. The store's key matches the APK's, so Mihon

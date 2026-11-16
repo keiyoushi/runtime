@@ -97,7 +97,9 @@ jobs:
           apk=$(ls host/build/outputs/apk/release/*.apk)
           (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")" > "$(basename "$apk").sha256")
           name=$(jq -r .versionName host/build/outputs/runtime-info.json)
-          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" \
+          # A fixed name too, for releases/latest/download/keiyoushi-runtime.apk; the index links the versioned one
+          cp "$apk" "$RUNNER_TEMP/keiyoushi-runtime.apk"
+          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" "$RUNNER_TEMP/keiyoushi-runtime.apk" \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Keiyoushi Runtime $name" \
