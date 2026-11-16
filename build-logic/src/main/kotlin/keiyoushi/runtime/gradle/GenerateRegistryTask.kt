@@ -56,11 +56,11 @@ abstract class GenerateRegistryTask : DefaultTask() {
             |    /** The lowest API level each module still serves */
             |    public static final int[] MIN_APIS = {${modules.joinToString { "${it.minApi}" }}};
             |
-            |    /** Bundled libraries, and their license files in the APK */
+            |    /** Bundled libraries, and their license files as asset paths */
             |    public static final String[] LICENSE_NAMES = {${licenses.joinToString { "\"${it.substringBeforeLast('.')}\"" }}};
-            |    public static final String[] LICENSE_PATHS = {${licenses.joinToString { "\"assets/licenses/$it\"" }}};
+            |    public static final String[] LICENSE_PATHS = {${licenses.joinToString { "\"licenses/$it\"" }}};
             |
-            |    /** Each module's {@code keiyoushi.runtime.<name>.Entry}. This initialises them: only the source factory calls it. */
+            |    /** Each module's {@code keiyoushi.runtime.<name>.Entry}. This initialises them: only the extension's factory calls it. */
             |    public static Object[] entries() {
             |        return new Object[] {${modules.joinToString { "keiyoushi.runtime.${it.name}.Entry.INSTANCE" }}};
             |    }

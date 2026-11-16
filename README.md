@@ -5,8 +5,9 @@ once as its own extension. Extensions that need a runtime module (for example a 
 call it through the small `contract` library they bundle. If the runtime is missing or too old,
 they tell you to install or update it.
 
-The runtime is an extension APK (package `keiyoushi.runtime`). It has no manga. Its one source
-holds settings that show the version, the modules and their API levels, and the licenses of what it bundles.
+The runtime is an extension APK (package `keiyoushi.runtime`) with no sources. It is also an app:
+its launcher screen shows the version, the modules and their API levels, and the licenses of the
+runtime and of what it bundles.
 
 ## Install
 
@@ -32,7 +33,7 @@ contract/        the library extensions bundle to reach the runtime (keiyoushi.l
                  published on JitPack as com.github.keiyoushi.runtime:contract:<tag>
 api/<name>/      a module's contract interfaces (published as api-<name>)
 modules/<name>/  a module's implementation
-host/            the APK: extension metadata, the source factory, the launcher screen
+host/            the APK: extension metadata, the extension's factory, the launcher screen
 build-logic/     Gradle conventions: library, module, host, publishing, signing
 ```
 
@@ -69,6 +70,8 @@ debug builds include them.
 4. Add a contract test that registers `Entry` with `RuntimeHost.register` and binds the api
    through `RuntimeModule("<name>", api).bind<...>()`, as `modules/hello/test` does. A green
    bind means every contract function resolves to the module's implementation.
+5. If the module bundles a library, add its license as `host/assets/licenses/<library>.txt`. The
+   launcher screen lists it next to the runtime's own license.
 
 The host picks up every `modules/*` project by itself and generates its registry from them, so
 nothing in `host/` changes. Raise `versionCode` in `host/build.gradle.kts`.

@@ -26,8 +26,7 @@ class RuntimeFactoryTest {
         assertEquals(BuildModules.NAMES.toSet(), entries.keys)
         entries.forEach { (name, entry) -> assertEquals("keiyoushi.runtime.$name.Entry", entry!!.javaClass.name) }
 
-        assertEquals(BuildConfig.SOURCE_NAME, sources.single().toString())
-        assertEquals(BuildConfig.SOURCE_ID, sources.single().id)
+        assertEquals(emptyList<Any>(), sources)
     }
 
     private companion object {

@@ -32,7 +32,7 @@ abstract class RuntimeHostExtension {
 /**
  * The runtime APK. It bundles every `modules/<name>` project and generates their registry, so host
  * code never names a module. It is an extension to the apps (`tachiyomi.extension` feature and
- * metadata, one source) and an app with a launcher screen.
+ * metadata, no sources) and an app whose launcher screen shows the version, modules and licenses.
  */
 class HostPlugin : Plugin<Project> {
     override fun apply(target: Project): Unit = with(target) {
@@ -105,8 +105,7 @@ class HostPlugin : Plugin<Project> {
                 android.defaultConfig.manifestPlaceholders["extName"] = host.name.get()
                 android.defaultConfig.manifestPlaceholders["libVersion"] = host.libVersion.get()
                 android.defaultConfig.buildConfigField("String", "STORE_BASE_URL", "\"${storeBaseUrl.get().trimEnd('/')}\"")
-                android.defaultConfig.buildConfigField("String", "SOURCE_NAME", "\"${host.name.get()}\"")
-                android.defaultConfig.buildConfigField("long", "SOURCE_ID", "${computeSourceId(host.name.get(), "all")}L")
+                android.defaultConfig.buildConfigField("String", "RUNTIME_NAME", "\"${host.name.get()}\"")
             }
 
             onVariants { variant ->
@@ -117,6 +116,12 @@ class HostPlugin : Plugin<Project> {
                     outputDir.set(layout.buildDirectory.dir("generated/runtime/${variant.name}"))
                 }
                 variant.sources.java?.addGeneratedSourceDirectory(generate, GenerateRegistryTask::outputDir)
+
+                val runtimeLicense = tasks.register<RuntimeLicenseTask>("generate${variant.name.capitalized()}RuntimeLicense") {
+                    license.set(rootProject.layout.projectDirectory.file("LICENSE"))
+                    outputDir.set(layout.buildDirectory.dir("generated/runtimeLicense/${variant.name}"))
+                }
+                variant.sources.assets?.addGeneratedSourceDirectory(runtimeLicense, RuntimeLicenseTask::outputDir)
 
                 variant.outputs
                     .filter { it.outputType == VariantOutputConfiguration.OutputType.SINGLE }
@@ -154,7 +159,7 @@ internal data class ModuleSpec(val name: String, val api: Int, val minApi: Int, 
 
 private fun String.capitalized() = replaceFirstChar { it.uppercase() }
 
-/** The source ID the apps compute for a source: as keiyoushi's ExtensionPlugin does */
+/** The source ID the apps compute for a source, as keiyoushi's ExtensionPlugin does: the store index's placeholder row */
 internal fun computeSourceId(name: String, lang: String, versionId: Int = 1): Long {
     val key = "${name.lowercase()}/$lang/$versionId"
     val bytes = MessageDigest.getInstance("MD5").digest(key.toByteArray())

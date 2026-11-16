@@ -1,16 +1,19 @@
 package keiyoushi.runtime.host;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.TypedArray;
 import android.graphics.Insets;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.Button;
@@ -18,20 +21,27 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import keiyoushi.runtime.BuildConfig;
 
 /**
- * The screen the launcher opens: the installed version, the modules with their API levels, and a
- * button that adds the runtime's update store to a reader app. Plain Java on framework views: in
- * the runtime's own process no app provides the Kotlin stdlib.
+ * The screen the launcher opens: the installed version, the modules with their API levels, a
+ * button that adds the runtime's update store to a reader app, and the licenses. Plain Java on
+ * framework views: in the runtime's own process no app provides the Kotlin stdlib.
  */
 public final class LauncherActivity extends Activity {
     /** The legacy add-store deep link: every fork of the app takes it */
     private static final String ADD_STORE_SCHEME = "tachiyomi";
 
     private static final String ADD_STORE_HOST = "add-repo";
+
+    /** The repository's LICENSE, packaged by build-logic's RuntimeLicenseTask */
+    private static final String RUNTIME_LICENSE_ASSET = "LICENSE";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +62,7 @@ public final class LauncherActivity extends Activity {
         int padding = dp(24);
         column.setPadding(padding, padding, padding, padding);
 
-        column.addView(text(BuildConfig.SOURCE_NAME, 24, true));
+        column.addView(text(BuildConfig.RUNTIME_NAME, 24, true));
         column.addView(text("Version " + BuildConfig.VERSION_NAME, 16, false));
 
         column.addView(space());
@@ -98,6 +108,13 @@ public final class LauncherActivity extends Activity {
         url.setTextIsSelectable(true);
         column.addView(url);
 
+        column.addView(space());
+        column.addView(text("Licenses", 18, true));
+        column.addView(licenseRow(BuildConfig.RUNTIME_NAME, RUNTIME_LICENSE_ASSET));
+        for (int i = 0; i < BuildModules.LICENSE_NAMES.length; i++) {
+            column.addView(licenseRow(BuildModules.LICENSE_NAMES[i], BuildModules.LICENSE_PATHS[i]));
+        }
+
         ScrollView scroll = new ScrollView(this);
         scroll.addView(column);
         // Edge to edge from targetSdk 35: keep the content clear of the system bars
@@ -135,6 +152,49 @@ public final class LauncherActivity extends Activity {
             }
         }
         return labels;
+    }
+
+    /** A name to tap: it opens the license's full text */
+    private TextView licenseRow(String name, String asset) {
+        TextView row = text(name, 16, false);
+        row.setMinHeight(dp(48));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        TypedArray attrs = obtainStyledAttributes(new int[] {android.R.attr.selectableItemBackground});
+        row.setBackground(attrs.getDrawable(0));
+        attrs.recycle();
+        row.setOnClickListener(v -> showLicense(name, asset));
+        return row;
+    }
+
+    private void showLicense(String name, String asset) {
+        TextView body = new TextView(this);
+        body.setText(readAsset(asset));
+        body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        body.setTypeface(Typeface.MONOSPACE);
+        body.setTextIsSelectable(true);
+        int padding = dp(24);
+        body.setPadding(padding, dp(8), padding, dp(8));
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(body);
+        new AlertDialog.Builder(this)
+                .setTitle(name)
+                .setView(scroll)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private String readAsset(String path) {
+        try (InputStream in = getAssets().open(path)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            for (int read; (read = in.read(buffer)) != -1; ) {
+                out.write(buffer, 0, read);
+            }
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "Missing " + path;
+        }
     }
 
     private TextView text(String value, int sizeSp, boolean bold) {
