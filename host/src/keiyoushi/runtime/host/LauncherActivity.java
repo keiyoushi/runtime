@@ -4,11 +4,13 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.TypedArray;
 import android.graphics.Insets;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -30,9 +32,9 @@ import java.util.List;
 import keiyoushi.runtime.BuildConfig;
 
 /**
- * The screen the launcher opens: the installed version, the modules with their API levels, a
- * button that adds the runtime's update store to a reader app, and the licenses. Plain Java on
- * framework views: in the runtime's own process no app provides the Kotlin stdlib.
+ * The screen the launcher opens: the installed version, the modules with their API levels, one
+ * button per reader app that adds the runtime's update store to it, and the licenses. Plain Java
+ * on framework views: in the runtime's own process no app provides the Kotlin stdlib.
  */
 public final class LauncherActivity extends Activity {
     /** The legacy add-store deep link: every fork of the app takes it */
@@ -55,7 +57,7 @@ public final class LauncherActivity extends Activity {
                         .authority(ADD_STORE_HOST)
                         .appendQueryParameter("url", indexUrl)
                         .build());
-        List<String> handlers = handlerLabels(addStore);
+        List<ResolveInfo> handlers = handlers(addStore);
 
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
@@ -85,24 +87,16 @@ public final class LauncherActivity extends Activity {
                 16,
                 false));
 
-        Button add = new Button(this);
-        add.setText("Add update store");
-        add.setEnabled(!handlers.isEmpty());
-        add.setOnClickListener(v -> {
-            try {
-                startActivity(Intent.createChooser(addStore, "Add update store to"));
-            } catch (ActivityNotFoundException e) {
-                Toast.makeText(this, "No app can add it", Toast.LENGTH_LONG).show();
-            }
-        });
-        column.addView(add);
-
-        column.addView(text(
-                handlers.isEmpty()
-                        ? "No installed app can add extension stores. Install Mihon or a fork of it first."
-                        : "Can add it: " + String.join(", ", handlers),
-                14,
-                false));
+        if (handlers.isEmpty()) {
+            column.addView(text(
+                    "No installed app can add extension stores. Install Mihon or a fork of it, "
+                            + "or add the store below by hand.",
+                    14,
+                    false));
+        }
+        for (ResolveInfo handler : handlers) {
+            column.addView(addStoreButton(addStore, handler));
+        }
 
         TextView url = text("Store: " + indexUrl, 14, false);
         url.setTextIsSelectable(true);
@@ -138,20 +132,51 @@ public final class LauncherActivity extends Activity {
         setContentView(scroll);
     }
 
-    /** The apps that take the add-store link, by name */
-    private List<String> handlerLabels(Intent intent) {
+    /** The apps that take the add-store link, one activity per app */
+    private List<ResolveInfo> handlers(Intent intent) {
         PackageManager pm = getPackageManager();
         List<ResolveInfo> found = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 ? pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
                 : pm.queryIntentActivities(intent, 0);
-        List<String> labels = new ArrayList<>();
+        List<ResolveInfo> handlers = new ArrayList<>();
+        List<String> packages = new ArrayList<>();
         for (ResolveInfo info : found) {
-            String label = info.activityInfo.applicationInfo.loadLabel(pm).toString();
-            if (!labels.contains(label)) {
-                labels.add(label);
+            if (!packages.contains(info.activityInfo.packageName)) {
+                packages.add(info.activityInfo.packageName);
+                handlers.add(info);
             }
         }
-        return labels;
+        return handlers;
+    }
+
+    /**
+     * A button that adds the store to one app, named and drawn as the app itself: the handlers'
+     * own labels are all "Add extension store", which can't tell two forks apart
+     */
+    private Button addStoreButton(Intent addStore, ResolveInfo handler) {
+        PackageManager pm = getPackageManager();
+        ApplicationInfo app = handler.activityInfo.applicationInfo;
+        Button button = new Button(this);
+        CharSequence label = app.loadLabel(pm);
+        String text = "Add update store to " + label;
+        button.setText(text);
+        button.setAllCaps(false);
+        Drawable icon = app.loadIcon(pm);
+        int size = dp(32);
+        icon.setBounds(0, 0, size, size);
+        button.setCompoundDrawablesRelative(icon, null, null, null);
+        button.setCompoundDrawablePadding(dp(12));
+        button.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        Intent target = new Intent(addStore)
+                .setClassName(handler.activityInfo.packageName, handler.activityInfo.name);
+        button.setOnClickListener(v -> {
+            try {
+                startActivity(target);
+            } catch (ActivityNotFoundException | SecurityException e) {
+                Toast.makeText(this, "Couldn't open " + label, Toast.LENGTH_LONG).show();
+            }
+        });
+        return button;
     }
 
     /** A name to tap: it opens the license's full text */

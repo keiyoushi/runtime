@@ -13,10 +13,10 @@ runtime and of what it bundles.
 
 1. Download the APK from the [latest release](https://github.com/keiyoushi/runtime/releases/latest)
    and install it.
-2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store**. Pick your reader
-   app (Mihon or a fork). The app adds the runtime's store, and from then on it updates the
-   runtime like any other extension. The store's key matches the APK's, so the app trusts the
-   runtime without asking.
+2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store to** your reader app
+   (Mihon or a fork; each installed one gets its own button). The app adds the runtime's store,
+   and from then on it updates the runtime like any other extension. The store's key matches the
+   APK's, so the app trusts the runtime without asking.
 
 Or add the store first and install from the app: in the app's extension store settings, add
 
@@ -25,6 +25,9 @@ https://raw.githubusercontent.com/keiyoushi/runtime/repo/index.min.json
 ```
 
 then install **Keiyoushi Runtime** from Browse → Extensions.
+
+Updating or uninstalling the runtime restarts the reader app. That is expected: the app has the
+runtime loaded.
 
 ## Layout
 
