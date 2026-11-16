@@ -44,7 +44,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew --no-configuration-cache -Pruntime.requireSigning=true \
+          ./gradlew --no-configuration-cache \
             "-Pruntime.storeUrl=https://github.com/$GITHUB_REPOSITORY/raw/repo/index.pb" \
             testDebugUnitTest assembleRelease
 

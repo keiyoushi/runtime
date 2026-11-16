@@ -34,9 +34,9 @@ jobs:
         with:
           cache-read-only: true
 
-      # Debug-signed: PRs never see the key. Unit tests include each module's contract test.
+      # PRs never see the key, so release is signed with the debug key. Unit tests include each module's contract test.
       - name: Build, test, lint
-        run: ./gradlew spotlessCheck assembleRelease testDebugUnitTest lint
+        run: ./gradlew -Pruntime.debugSignRelease=true spotlessCheck assembleRelease testDebugUnitTest lint
 
       - name: versionCode exceeds the latest release's
         env:
