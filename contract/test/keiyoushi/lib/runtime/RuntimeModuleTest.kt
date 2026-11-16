@@ -70,7 +70,7 @@ class RuntimeModuleTest {
     @Test
     fun missingRuntimeSaysInstall() {
         assertEquals(
-            "Keiyoushi Runtime isn't installed or didn't load. Install it from https://github.com/keiyoushi/runtime/releases/latest",
+            "Keiyoushi Runtime isn't installed or didn't load. Install it from https://keiyoushi.github.io/runtime",
             unavailable { RuntimeModule("demo", 1).bind<Demo>() },
         )
     }

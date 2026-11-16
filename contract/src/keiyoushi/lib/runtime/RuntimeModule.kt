@@ -69,7 +69,7 @@ class RuntimeModule(val name: String, val api: Int) {
 
     private fun resolve(): Resolved {
         val registration = Registration.current()
-            ?: throw RuntimeUnavailableException("Keiyoushi Runtime isn't installed or didn't load. Install it from https://github.com/keiyoushi/runtime/releases/latest")
+            ?: throw RuntimeUnavailableException("Keiyoushi Runtime isn't installed or didn't load. Install it from https://keiyoushi.github.io/runtime")
         resolved?.takeIf { it.registration === registration }?.let { return it }
 
         val served = registration.module(Registration.APIS) as? Int
