@@ -1,0 +1,116 @@
+name: Release
+
+# Push a tag v<versionCode> (the versionCode in host/build.gradle.kts) to release.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign, release, publish the store
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: 21
+          distribution: temurin
+
+      # No cache: the signing build reads the key's passwords during configuration
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
+
+      - name: Build and sign
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-configuration-cache -Pruntime.requireSigning=true \
+            "-Pruntime.storeBaseUrl=https://raw.githubusercontent.com/$GITHUB_REPOSITORY/repo" \
+            testDebugUnitTest assembleRelease
+
+      - name: Remove the decoded key
+        if: always()
+        run: rm -rf host/build/signing
+
+      - name: Check the tag against versionCode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$(jq -r .versionCode host/build/outputs/runtime-info.json)
+          if [ "$GITHUB_REF_NAME" != "v$code" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match versionCode $code: tag v$code"
+            exit 1
+          fi
+          latest=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1000 --json tagName \
+            --jq '[.[].tagName | select(test("^v[0-9]+$")) | ltrimstr("v") | tonumber] | max // 0')
+          if [ "$code" -le "$latest" ]; then
+            echo "::error::versionCode $code must exceed the latest release's ($latest)"
+            exit 1
+          fi
+
+      - name: Write the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install --user 'protobuf>=7.35.1,<8'
+          remote="https://github.com/$GITHUB_REPOSITORY"
+          if git ls-remote --exit-code --heads "$remote" repo; then
+            git clone --depth 1 --branch repo "$remote" repo
+          else
+            git init -b repo repo
+            git -C repo remote add origin "$remote"
+          fi
+          apk=$(ls host/build/outputs/apk/release/*.apk)
+          python .github/scripts/publish-store.py \
+            --apk "$apk" \
+            --info host/build/outputs/runtime-info.json \
+            --out repo \
+            --base-url "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/repo" \
+            --release-url "$remote/releases/download/$GITHUB_REF_NAME" \
+            --expect-fingerprint .github/signing-key-fingerprint
+
+      # Before the store moves, so it never points at a missing APK
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk=$(ls host/build/outputs/apk/release/*.apk)
+          (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")" > "$(basename "$apk").sha256")
+          name=$(jq -r .versionName host/build/outputs/runtime-info.json)
+          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Keiyoushi Runtime $name" \
+            --notes "Install the APK, open Keiyoushi Runtime and tap Add update store. SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
+
+      - name: Push the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh auth setup-git
+          cd repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release $GITHUB_REF_NAME"
+          git push origin HEAD:repo

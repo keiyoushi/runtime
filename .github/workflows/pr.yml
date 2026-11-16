@@ -1,0 +1,58 @@
+name: PR check
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, test, lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+
+      # Debug-signed: PRs never see the key. Unit tests include each module's contract test.
+      - name: Build, test, lint
+        run: ./gradlew spotlessCheck assembleRelease testDebugUnitTest lint
+
+      - name: versionCode exceeds the latest release's
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA" HEAD -- contract api modules host build-logic gradle \
+              settings.gradle.kts build.gradle.kts gradle.properties; then
+            echo "Nothing the APK ships changed"
+            exit 0
+          fi
+          code=$(jq -r .versionCode host/build/outputs/runtime-info.json)
+          latest=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1000 --json tagName \
+            --jq '[.[].tagName | select(test("^v[0-9]+$")) | ltrimstr("v") | tonumber] | max // 0')
+          if [ "$code" -le "$latest" ]; then
+            echo "::error file=host/build.gradle.kts::versionCode $code must exceed the latest release's ($latest)"
+            exit 1
+          fi
+          echo "versionCode $code > $latest"
