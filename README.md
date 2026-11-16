@@ -11,23 +11,27 @@ runtime and of what it bundles.
 
 ## Install
 
-1. Download the APK from the [latest release](https://github.com/keiyoushi/runtime/releases/latest)
-   and install it.
-2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store to** your reader app
-   (Mihon or a fork; each installed one gets its own button). The app adds the runtime's store,
-   and from then on it updates the runtime like any other extension. The store's key matches the
-   APK's, so the app trusts the runtime without asking.
+The runtime works with [Mihon](https://mihon.app) only. Setup help:
+[keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).
 
-Or add the store first and install from the app: in the app's extension store settings, add
+1. Download the APK from the [latest release](https://github.com/keiyoushi/runtime/releases/latest)
+   (or from the docs page) and install it.
+2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store to Mihon** (each
+   installed Mihon build gets its own button). Mihon adds the runtime's store and from then on
+   updates the runtime like any other extension. The store's key matches the APK's, so Mihon
+   trusts the runtime without asking.
+
+Or add the store first, as the docs page shows, and install from Mihon: in Mihon's extension
+store settings, add
 
 ```
-https://raw.githubusercontent.com/keiyoushi/runtime/repo/index.min.json
+https://github.com/keiyoushi/runtime/raw/repo/index.pb
 ```
 
 then install **Keiyoushi Runtime** from Browse → Extensions.
 
-Updating or uninstalling the runtime restarts the reader app. That is expected: the app has the
-runtime loaded.
+Updating or uninstalling the runtime restarts Mihon. That is expected: Mihon has the runtime
+loaded.
 
 ## Layout
 
@@ -93,7 +97,8 @@ with `--no-configuration-cache` when these are set.
 
 1. Merge a PR that raises `versionCode`. CI checks that it exceeds the latest release's.
 2. Push the tag `v<versionCode>`. `release.yml` builds and signs the APK, creates the GitHub
-   Release with the APK and its SHA-256, and rewrites the `repo` branch (the update store).
+   Release with the APK and its SHA-256, and rewrites the `repo` branch (the update store:
+   `index.pb` and `index.json`, whose apkUrl is the Release asset).
    JitPack builds the `contract` and `api-*` artifacts for the tag when someone first requests
    them.
 
