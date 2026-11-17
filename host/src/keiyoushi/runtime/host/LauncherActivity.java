@@ -240,12 +240,14 @@ public final class LauncherActivity extends Activity {
 
     /**
      * Sends the link to one app explicitly: the handlers' own labels are all "Add extension store", which can't
-     * tell two Mihon builds apart in a chooser
+     * tell two Mihon builds apart in a chooser. It opens in the app's own task, clearing anything above its main
+     * screen: Mihon's MainActivity closes itself when it isn't the root of its task
      */
     private void addStore(ResolveInfo handler, String label) {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, ADD_STORE)
-                    .setClassName(handler.activityInfo.packageName, handler.activityInfo.name));
+                    .setClassName(handler.activityInfo.packageName, handler.activityInfo.name)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
         } catch (ActivityNotFoundException | SecurityException e) {
             Toast.makeText(this, getString(R.string.open_failed, label), Toast.LENGTH_LONG).show();
         }
