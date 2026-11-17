@@ -106,18 +106,26 @@ PR checks do), sign it with the debug key:
 ## WebView official channel check
 
 `webview-official.yml` (daily, on demand, and on `modules/webviewpatch/**` PRs) runs the locator against
-the current Google-signed Android System WebView of the Canary, Dev and Beta channels — arm64-v8a and the
-armeabi-v7a half of the 64+32 APK, plus the armeabi-v7a-only APK where a channel has one. It resolves each
-version from chromiumdash, then (`.github/scripts/webview-official-check.sh`) fetches the APK from apkpure
-**by HTTP range only** — the signing block, the AndroidManifest, and each `libwebviewchromium.so` — and runs
-`OfficialCheckTest`. apkpure is a third-party mirror; we trust only Google's signature, verifying the signer
-and Play source-stamp certificate digests and the versionName against pinned values before gating a file
-(not a full `apksigner` run, which would mean downloading the whole ~250 MB APK). The job fails only when a
-verified official build is fetched and the locator can no longer find the X-Requested-With adder — an early
-warning that a new WebView may stop patching. A channel the mirror won't serve, or that fails verification,
-is **skipped, not failed** (a warning annotation); if every channel is skipped the job passes with a loud
-warning. Run it locally against already-extracted libs with
-`OUTDIR=/tmp/ol .github/scripts/webview-official-check.sh --local-apk-dir <tree-of-libwebviewchromium.so>`.
+the current Google-signed Android System WebView of Play's **Stable, Beta and Canary** channels, across the
+three build variants Play delivers: the 64-bit-only Pixel-profile APK (its arm64-v8a and armeabi-v7a libs),
+the 32-bit-only APK (armeabi-v7a-only), and the 64+32 APK (arm64-v8a and armeabi-v7a, 32-bit-capable) — up
+to five libs per channel.
+
+The builds come from the private repo `hazptr/webview-builds`, kept current by a maintainer's fetcher that
+pulls each channel from Google Play, verifies it in full with `apksigner` (one signer, v2/v3 and the Play
+source stamp, certificates pinned per channel) and publishes the extracted `libwebviewchromium.so` files
+under the tags `stable` / `beta` / `canary`, each with a `manifest.json` of versionName, versionCode, build
+profile and SHA-256 per asset. `.github/scripts/webview-official-check.sh` reads each release through the
+GitHub REST API with a fine-grained **Contents: Read-only** token (secret `WEBVIEW_BUILDS_TOKEN`), downloads
+the manifest and every lib asset, verifies each asset's SHA-256 against the manifest, and runs
+`OfficialCheckTest`. Because the builds are already Play-signed and fully verified upstream and SHA-256-checked
+here, there is no signer-pin or mirror-trust logic. The job fails only when a verified official build is
+fetched and the locator can no longer find the X-Requested-With adder — an early warning that a new WebView
+may stop patching. A download or API error, or a SHA-256 mismatch, is also a failure (it is our own repo). A
+manifest older than three days raises a warning annotation but does not fail. **Fork PRs skip the check**: the
+secret is not available to them, so the script exits with a notice and the job passes. Run it locally against
+already-extracted libs with
+`OUTDIR=/tmp/ol .github/scripts/webview-official-check.sh --local-dir <tree-of-libwebviewchromium.so>`.
 
 ## Release
 

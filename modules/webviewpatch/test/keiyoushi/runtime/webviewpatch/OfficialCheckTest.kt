@@ -11,10 +11,10 @@ import java.io.File
  * (Canary, Dev, Beta), and fails when the locator can no longer find the X-Requested-With adder — an early
  * warning that a new WebView would stop patching.
  *
- * The CI script (`webview-official-check.sh`) resolves each channel's version from chromiumdash, fetches the
- * Google-signed APK from the apkpure mirror by HTTP range, verifies the signer and Play source-stamp
- * certificate digests and the versionName (the mirror is untrusted transport; only Google's signature is
- * trusted), and lays each verified `.so` out under `-Dxrw.official-libs=<dir>` as
+ * The CI script (`webview-official-check.sh`) reads each channel's release from the private
+ * `hazptr/webview-builds` repo (builds pulled from Google Play and apksigner-verified by a maintainer's
+ * fetcher), downloads every `libwebviewchromium.so` asset and its `manifest.json`, verifies each asset's
+ * SHA-256 against the manifest, and lays each verified `.so` out under `-Dxrw.official-libs=<dir>` as
  * `<label>/libwebviewchromium.so`, with a `meta.tsv` of `label, channel, version, versionCode, abi, variant`.
  * Every laid-out `.so` is already verified, so every one must locate; a miss fails the job.
  *

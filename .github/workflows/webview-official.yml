@@ -1,10 +1,12 @@
 name: WebView official channel check
 
-# Runs the webviewpatch locator against the current Google-signed Android System WebView of the Canary,
-# Dev and Beta channels, as an early warning that a new WebView may stop patching. A failure means: a
-# verified, Google-signed official build was fetched and the locator did not find the X-Requested-With
-# adder in it. A channel the apkpure mirror won't serve, or that fails verification, is skipped (warning),
-# not failed; if every channel is skipped the job passes with a loud warning. See CONTRIBUTING.md.
+# Runs the webviewpatch locator against the current Google-signed Android System WebView of the Stable,
+# Beta and Canary channels, as an early warning that a new WebView may stop patching. The builds come from
+# the private repo hazptr/webview-builds (kept current by a maintainer's fetcher, straight from Google Play,
+# fully apksigner-verified there); this job reads them with a fine-grained, Contents:Read-only token and
+# verifies each asset's SHA-256 against the manifest. A failure means a verified official build was fetched
+# and the locator did not find the X-Requested-With adder in it. Without the token (fork PRs, or not yet
+# configured) the job skips with a notice and passes. See CONTRIBUTING.md.
 
 on:
   schedule:
@@ -15,7 +17,6 @@ on:
       - modules/webviewpatch/**
       - .github/workflows/webview-official.yml
       - .github/scripts/webview-official-check.sh
-      - .github/scripts/apk_meta.py
 
 permissions: {}
 
@@ -50,34 +51,11 @@ jobs:
         with:
           cache-read-only: true
 
-      - name: Resolve the published channel versions
-        id: versions
+      # The private-builds token is passed to this one step only. The assets live on GitHub's own release
+      # storage (same network as the runner), so each run re-downloads the current builds; no cache. The
+      # script skips with a notice (job passes) when the secret is absent, as on fork PRs.
+      - name: Fetch, verify and locate the adder
         env:
-          CHROMIUMDASH: https://chromiumdash.appspot.com/fetch_releases
+          WEBVIEW_BUILDS_TOKEN: ${{ secrets.WEBVIEW_BUILDS_TOKEN }}
         run: |
-          for ch in Canary Dev Beta; do
-            v=$(curl -sS -L --fail --retry 2 --retry-delay 4 "$CHROMIUMDASH?platform=Webview&channel=$ch&num=1" \
-                 | python3 -I -c 'import json,sys;print(json.load(sys.stdin)[0]["version"])' 2>/dev/null) || v=""
-            echo "${ch,,}=$v" >> "$GITHUB_OUTPUT"
-            echo "$ch=$v"
-          done
-
-      # The resolved versions map 1:1 to the builds' versionCodes, so they key the cache of the extracted
-      # .so files. A new channel version misses the cache and re-fetches; an unchanged one is a hit.
-      - name: Cache the extracted official libs
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .official-libs
-          key: webview-official-${{ steps.versions.outputs.canary }}-${{ steps.versions.outputs.dev }}-${{ steps.versions.outputs.beta }}
-
-      - name: Locate the adder
-        env:
-          CANARY: ${{ steps.versions.outputs.canary }}
-          DEV: ${{ steps.versions.outputs.dev }}
-          BETA: ${{ steps.versions.outputs.beta }}
-        run: |
-          args=()
-          [ -n "$CANARY" ] && args+=(--version-canary "$CANARY")
-          [ -n "$DEV" ] && args+=(--version-dev "$DEV")
-          [ -n "$BETA" ] && args+=(--version-beta "$BETA")
-          OUTDIR="$GITHUB_WORKSPACE/.official-libs" bash .github/scripts/webview-official-check.sh "${args[@]}"
+          OUTDIR="$GITHUB_WORKSPACE/.official-libs" bash .github/scripts/webview-official-check.sh
