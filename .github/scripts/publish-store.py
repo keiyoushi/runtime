@@ -60,11 +60,12 @@ def signing_cert(apk: Path, build_tools: str | None) -> tuple[str, str]:
         capture_output=True,
         text=True,
     ).stdout
-    digests = re.findall(r"^Signer #\d+ certificate SHA-256 digest: ([0-9a-f]{64})$", out, re.M)
-    subjects = re.findall(r"^Signer #\d+ certificate DN: (.*)$", out, re.M)
+    # "Signer #1 certificate ..." or per-scheme "V3.0 Signer: certificate ..." depending on build-tools
+    digests = set(re.findall(r"^.*Signer\b.*certificate SHA-256 digest: ([0-9a-f]{64})$", out, re.M))
+    subjects = set(re.findall(r"^.*Signer\b.*certificate DN: (.*)$", out, re.M))
     if len(digests) != 1 or len(subjects) != 1:
         sys.exit(f"{apk.name}: expected one signer, found {len(digests)}")
-    return digests[0], subjects[0]
+    return digests.pop(), subjects.pop()
 
 
 def refuse_temp_key(fingerprint: str, subject: str | None) -> None:
