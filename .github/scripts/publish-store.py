@@ -141,7 +141,6 @@ def main() -> None:
                 homeUrl=WEBSITE,
             )
         ],
-        runtimeProvides={name: module["api"] for name, module in info["modules"].items()},
     )
     # Mihon: data/.../NetworkExtensionStore `signingKey` (field 3). Adding the store trusts APKs
     # signed with it (TrustExtension.isTrusted), so the runtime installs without a trust prompt
