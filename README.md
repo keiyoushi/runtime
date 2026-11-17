@@ -11,8 +11,7 @@ its own extension. If an extension says "Keiyoushi Runtime isn't installed" or a
 it means.
 
 ## Usage
-**Setup guide: [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).** The runtime works in the same
-apps as Keiyoushi's extensions.
+**Setup guide: [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).**
 
 * Download [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk)
   and install it
