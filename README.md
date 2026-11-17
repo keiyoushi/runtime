@@ -15,7 +15,7 @@ it means.
 
 * Download [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk)
   and install it
-* Open **Keiyoushi Runtime** and tap **Add to** your app (e.g. **Add to Mihon**), so the app keeps it up to date
+* Open **Keiyoushi Runtime** and tap **Add to your app**, so the app keeps it up to date
 * Otherwise, add this store in your app and install the runtime from Browse → Extensions:
   https://github.com/keiyoushi/runtime/raw/repo/index.pb
 
