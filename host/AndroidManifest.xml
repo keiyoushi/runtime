@@ -14,6 +14,8 @@
         </intent>
     </queries>
 
+    <!-- The application icon is the square one the apps show next to the other extensions; the launcher
+         activity's own icon is the adaptive one the phone's launcher shows -->
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -37,6 +39,7 @@
         <activity
             android:name="keiyoushi.runtime.host.LauncherActivity"
             android:exported="true"
+            android:icon="@mipmap/ic_launcher_adaptive"
             android:label="${extName}"
             android:theme="@style/Theme.Runtime">
             <intent-filter>

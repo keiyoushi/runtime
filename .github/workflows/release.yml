@@ -127,7 +127,7 @@ jobs:
             --apk "$apk" \
             --info host/build/outputs/runtime-info.json \
             --out repo \
-            --icon-url "https://cdn.jsdelivr.net/gh/$GITHUB_REPOSITORY@$GITHUB_SHA/host/icon/store.png" \
+            --icon-url "https://cdn.jsdelivr.net/gh/$GITHUB_REPOSITORY@$GITHUB_SHA/host/res/mipmap-xxxhdpi/ic_launcher.png" \
             --release-url "$remote/releases/download/$GITHUB_REF_NAME" \
             --expect-fingerprint .github/signing-key-fingerprint
 

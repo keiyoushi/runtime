@@ -1,8 +1,8 @@
-"""Regenerates the launcher icon (needs Pillow, numpy and OpenCV; `python host/icon/generate.py`).
+"""Regenerates the adaptive launcher icon (needs numpy and OpenCV; `python host/icon/generate.py`).
 
-Traces the black 形 of source.png (the 192 px legacy icon) into a vector path and writes the adaptive icon: lime
-background, the glyph inside the 66 dp safe zone, and the glyph again as the themed-icon layer. store.png is the
-same icon under a circle mask, for the store index's iconUrl.
+Traces the black 形 of the 192 px square icon (mipmap-xxxhdpi/ic_launcher.png, the application icon the apps and the
+store index show) into a vector path and writes the adaptive icon the launcher activity uses: lime background, the
+glyph inside the 66 dp safe zone, and the glyph again as the themed-icon layer.
 """
 
 import pathlib
@@ -15,7 +15,8 @@ RES = HERE.parent / "res"
 UP = 8  # trace on an 8x upscale
 SAFE_RADIUS = 31.0  # dp from the centre of the 108 dp canvas; the safe zone is 33, keep 2 dp clear
 
-src = cv2.cvtColor(cv2.imread(str(HERE / "source.png"), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGRA2RGBA).astype(np.float32)
+SQUARE = RES / "mipmap-xxxhdpi" / "ic_launcher.png"
+src = cv2.cvtColor(cv2.imread(str(SQUARE), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGRA2RGBA).astype(np.float32)
 opaque = src[..., 3] > 250
 lime = np.median(src[opaque & (src[..., :3].sum(-1) > 450)][:, :3], axis=0)
 # Coverage of the glyph: 0 on the lime fill, 1 on black, anti-aliased edges in between
@@ -40,7 +41,7 @@ def write(name, text):
 
 
 write(
-    "drawable/ic_launcher_foreground.xml",
+    "drawable/ic_launcher_adaptive_foreground.xml",
     '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
     '    xmlns:tools="http://schemas.android.com/tools"\n'
     '    android:width="108dp"\n    android:height="108dp"\n'
@@ -48,23 +49,12 @@ write(
     '    <path\n        android:fillColor="#000000"\n        android:fillType="evenOdd"\n'
     f'        android:pathData="{path}"\n        tools:ignore="VectorPath" />\n</vector>\n',
 )
-write("values/ic_launcher.xml", f'<resources>\n    <color name="ic_launcher_background">{colour}</color>\n</resources>\n')
+write("values/ic_launcher_adaptive.xml", f'<resources>\n    <color name="ic_launcher_adaptive_background">{colour}</color>\n</resources>\n')
 write(
-    "mipmap-anydpi/ic_launcher.xml",
+    "mipmap-anydpi/ic_launcher_adaptive.xml",
     '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-    '    <background android:drawable="@color/ic_launcher_background" />\n'
-    '    <foreground android:drawable="@drawable/ic_launcher_foreground" />\n'
-    '    <monochrome android:drawable="@drawable/ic_launcher_foreground" />\n'
+    '    <background android:drawable="@color/ic_launcher_adaptive_background" />\n'
+    '    <foreground android:drawable="@drawable/ic_launcher_adaptive_foreground" />\n'
+    '    <monochrome android:drawable="@drawable/ic_launcher_adaptive_foreground" />\n'
     "</adaptive-icon>\n",
 )
-
-# store.png: the visible 72 dp of the canvas in a circle filling 192 px, drawn at 8x and downsampled
-size, ss, sub = 192, 8, 16
-big = size * ss
-img = np.zeros((big, big, 4), np.uint8)
-img[..., :3] = np.round(lime)  # lime under the transparent corners too, so downsampling leaves no dark rim
-cv2.circle(img, (big * sub // 2,) * 2, big * sub // 2, (*(int(round(v)) for v in lime), 255), -1, cv2.LINE_8, 4)
-glyph = [np.round(((s - 54) * big / 72 + big / 2) * sub).astype(np.int32) for s in shapes]
-cv2.fillPoly(img, glyph, (0, 0, 0, 255), cv2.LINE_8, 4)
-img = cv2.resize(img, (size, size), interpolation=cv2.INTER_AREA)
-cv2.imwrite(str(HERE / "store.png"), cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA), [cv2.IMWRITE_PNG_COMPRESSION, 9])
