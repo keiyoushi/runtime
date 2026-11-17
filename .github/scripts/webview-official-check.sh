@@ -89,18 +89,34 @@ done
 warn() { echo "::warning::$*"; echo "SKIP: $*" >&2; }
 pace() { sleep "$PACE"; }
 
-# Resolve the apkpure download for a versionCode to a direct winudf URL and the full size. Prints
-# "<url>\t<total>" on success; non-zero when the code is not hosted (apkpure redirects to its /versions
-# page) or the mirror refused us (403/empty). Reads only one byte (Range 0-0).
+# Resolve the apkpure download for a versionCode to a direct winudf URL and the full size. On success prints
+# "ok\t<url>\t<total>" and returns 0; on failure prints a human reason ("blocked (HTTP 403 from <host>)",
+# "not hosted (HTTP 404 ...)", "timeout ...") and returns 1. Logs the final HTTP status and host of every
+# request to stderr, so a CI run that only ever gets refused says which. Reads only one byte (Range 0-0);
+# no --fail, so a 403/404 is read rather than hidden. The winudf token on a 302 is single-use-ish; callers
+# resolve fresh before a transfer.
 resolve() {
-  local pkg=$1 code=$2 hdr url total
-  hdr=$($CURL -sS -L --fail --retry 2 --retry-delay "$PACE" -r 0-0 -o /dev/null \
-        -D - -w 'EFFECTIVE %{url_effective}\n' "$APKPURE_BASE/$pkg?versionCode=$code" 2>/dev/null) || return 1
+  local pkg=$1 code=$2 hdr url total http host
+  hdr=$($CURL -sS -L --retry 2 --retry-delay "$PACE" --connect-timeout 20 --max-time 90 -r 0-0 -o /dev/null \
+        -D - -w 'HTTP %{http_code}\nEFFECTIVE %{url_effective}\n' "$APKPURE_BASE/$pkg?versionCode=$code" 2>/dev/null) \
+    || { echo "apkpure versionCode=$code: no response (timeout/transport error)" >&2; echo "timeout (no response from apkpure)"; return 1; }
+  http=$(printf '%s\n' "$hdr" | awk '$1=="HTTP"{print $2}' | tail -1 | tr -d '\r')
   url=$(printf '%s\n' "$hdr" | awk '$1=="EFFECTIVE"{print $2}' | tail -1 | tr -d '\r')
   total=$(printf '%s\n' "$hdr" | awk 'tolower($1)=="content-range:"{print $NF}' | tail -1 | sed 's#.*/##' | tr -d '\r')
-  case "$url" in *winudf.com*) : ;; *) return 1;; esac
-  case "$total" in ''|*[!0-9]*) return 1;; esac
-  printf '%s\t%s\n' "$url" "$total"
+  host=$(printf '%s' "$url" | sed -E 's#^https?://([^/]+).*#\1#')
+  echo "apkpure versionCode=$code: HTTP ${http:-?} via ${host:-?}" >&2
+  if [ -n "$url" ] && [ "${url#*winudf.com}" != "$url" ] && [ -n "$total" ] && [ -z "${total//[0-9]/}" ]; then
+    printf 'ok\t%s\t%s\n' "$url" "$total"; return 0
+  fi
+  case "$http" in
+    403) echo "blocked (HTTP 403 from ${host:-apkpure})";;
+    404) echo "not hosted (HTTP 404 from ${host:-apkpure})";;
+    *) case "$url" in
+         *apkpure.com*) echo "not hosted (HTTP ${http:-?}, redirected to the ${host} listing)";;
+         *) echo "blocked (HTTP ${http:-?} from ${host:-apkpure})";;
+       esac;;
+  esac
+  return 1
 }
 
 # Fetch the trailing <bytes> of a URL into a file (suffix Range). Writes the body to stdout, so a stdout-only
@@ -129,7 +145,7 @@ for e in d["entries"]:
         print(e["lho"],e["csize"],e["usize"],e["method"]); break' "$1" "$2"; }
 
 # Return a fresh winudf URL for a versionCode (the download token ages), or non-zero.
-fresh_url() { local r; r=$(resolve "$1" "$2") || return 1; printf '%s' "${r%%$'\t'*}"; }
+fresh_url() { local r; r=$(resolve "$1" "$2") || return 1; printf '%s' "$r" | cut -f2; }
 
 # Extract one stored (uncompressed) entry by range into <out>, resumably. A single Range can truncate
 # mid-stream on a slow link (or the token can expire on a long transfer), so append the still-missing tail
@@ -204,11 +220,11 @@ do_channel() {
   # Probe candidate arch suffixes and classify each by the ABIs its APK actually contains (the suffix->ABI
   # map differs by channel, so never trust the digit — read the central directory). 00 arm32-only, 01/03
   # the 64+32 universal, 06 x86 (skipped).
-  local suf code libs universal_code="" arm32_code=""
+  local suf code libs universal_code="" arm32_code="" skip_reasons=""
   for suf in 03 01 00; do
     code=$((base + 10#$suf))
-    local r; r=$(resolve "$pkg" "$code") || { pace; continue; }
-    local url total; url=${r%%$'\t'*}; total=${r##*$'\t'}
+    local r; r=$(resolve "$pkg" "$code") || { echo "   $code: skipped — $r"; skip_reasons="${skip_reasons:+$skip_reasons; }$r"; pace; continue; }
+    local url total; url=$(printf '%s' "$r" | cut -f2); total=$(printf '%s' "$r" | cut -f3)
     pace
     parse_meta "$url" "$total" "$code" || { warn "$channel: metadata parse failed for $code"; pace; continue; }
     libs=$(meta_libs "$WORK/meta-$code.json")
@@ -227,7 +243,7 @@ do_channel() {
   done
 
   if [ -z "$universal_code" ]; then
-    warn "$channel: apkpure has no 64+32 (arm64-v8a + armeabi-v7a) APK for $version (blocked or not hosted)"
+    warn "$channel: no 64+32 (arm64-v8a + armeabi-v7a) APK for $version — ${skip_reasons:-no candidate resolved}"
   else
     lay_out_code "$channel" "$version" "$universal_code" u "$abis"
   fi
