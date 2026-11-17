@@ -1,0 +1,180 @@
+name: Release
+
+# Push a tag v<versionCode> (the versionCode in host/build.gradle.kts) on a commit in main to release.
+# Safe to re-run: an existing release or draft for the tag is picked up, not refused.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, sign, release, publish the store
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Holds the signing secrets; its deployment rule admits only v* tags (CONTRIBUTING.md, Release)
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # All of main, for the ancestry check
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Before any build or secret
+      - name: Check the tag, versionCode and key
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The scaffold's temporary key (CN=Keiyoushi Runtime TEMP); publish-store.py refuses it too
+          TEMP_KEY_FINGERPRINT: 2216820f57f3d299f59e50420b999b753633d214931448b6b2f90dd5af0935a1
+        run: |
+          if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+$ ]]; then
+            echo "::error::Release tags are v<versionCode>, not $GITHUB_REF_NAME"
+            exit 1
+          fi
+          code=${GITHUB_REF_NAME#v}
+          declared=$(sed -nE 's/^ *versionCode = ([0-9]+) *$/\1/p' host/build.gradle.kts)
+          if [ "$declared" != "$code" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match versionCode ${declared:-?} in host/build.gradle.kts"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) isn't on main. Release only from a merged commit"
+            exit 1
+          fi
+          if [ "$(tr -d '[:space:]' < .github/signing-key-fingerprint)" = "$TEMP_KEY_FINGERPRINT" ]; then
+            echo "::error::.github/signing-key-fingerprint is the temporary key. Install the keiyoushi org key (the four secrets and that file) first"
+            exit 1
+          fi
+          # This tag's own release or draft means a re-run: finish it, unless a newer release came since
+          releases=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,isDraft)
+          latest=$(jq --arg tag "$GITHUB_REF_NAME" '[.[] | select((.isDraft | not) and .tagName != $tag) | .tagName
+            | select(test("^v[0-9]+$")) | ltrimstr("v") | tonumber] | max // 0' <<<"$releases")
+          if [ "$code" -le "$latest" ]; then
+            echo "::error::versionCode $code must exceed the latest release's ($latest)"
+            exit 1
+          fi
+          if jq -e --arg tag "$GITHUB_REF_NAME" 'any(.[]; .tagName == $tag)' <<<"$releases" >/dev/null; then
+            echo "::notice::Release $GITHUB_REF_NAME already exists: re-run, finishing it"
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      # No cache: the signing build reads the key's passwords during configuration
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
+
+      # Without the secrets. Unit tests include each module's contract test
+      - name: Test and lint
+        run: ./gradlew testDebugUnitTest lint
+
+      # The only step with the secrets. No daemon and in-process Kotlin, so no process outlives the
+      # step holding them
+      - name: Build and sign
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon --no-configuration-cache \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            "-Pruntime.storeUrl=https://github.com/$GITHUB_REPOSITORY/raw/repo/index.pb" \
+            assembleRelease
+
+      - name: Remove the decoded key
+        if: always()
+        run: rm -rf host/build/signing
+
+      - name: Check the build against the tag
+        run: |
+          code=$(jq -r .versionCode host/build/outputs/runtime-info.json)
+          if [ "$GITHUB_REF_NAME" != "v$code" ]; then
+            echo "::error::Built versionCode $code, tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Write the store
+        run: |
+          python -m pip install --user --require-hashes --only-binary :all: --no-deps -r .github/scripts/requirements.txt
+          remote="https://github.com/$GITHUB_REPOSITORY"
+          if git ls-remote --exit-code "$remote" refs/heads/repo; then
+            git clone --depth 1 --branch repo "$remote" repo
+          else
+            git init -b repo repo
+            git -C repo remote add origin "$remote"
+          fi
+          apk=$(ls host/build/outputs/apk/release/*.apk)
+          python .github/scripts/publish-store.py \
+            --apk "$apk" \
+            --info host/build/outputs/runtime-info.json \
+            --out repo \
+            --icon-url "https://cdn.jsdelivr.net/gh/$GITHUB_REPOSITORY@$GITHUB_SHA/host/res/mipmap-xxxhdpi/ic_launcher.png" \
+            --release-url "$remote/releases/download/$GITHUB_REF_NAME" \
+            --expect-fingerprint .github/signing-key-fingerprint
+
+      # A draft until the store is pushed, so a failed push leaves no public release the store doesn't offer
+      - name: Draft the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,isDraft |
+            jq -r --arg tag "$GITHUB_REF_NAME" '.[] | select(.tagName == $tag) | if .isDraft then "draft" else "published" end')
+          if [ "$state" = published ]; then
+            echo "::notice::$GITHUB_REF_NAME is already published; its assets stay as they are"
+            exit 0
+          fi
+          apk=$(ls host/build/outputs/apk/release/*.apk)
+          (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")" > "$(basename "$apk").sha256")
+          name=$(jq -r .versionName host/build/outputs/runtime-info.json)
+          # A fixed name too, for releases/latest/download/keiyoushi-runtime.apk; the index links the versioned one
+          cp "$apk" "$RUNNER_TEMP/keiyoushi-runtime.apk"
+          assets=("$apk" "$apk.sha256" "$RUNNER_TEMP/keiyoushi-runtime.apk")
+          title="Keiyoushi Runtime $name"
+          notes="Mihon only. Install the APK, open Keiyoushi Runtime and tap Add update store to Mihon. Setup: https://keiyoushi.github.io/runtime. SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
+          if [ "$state" = draft ]; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "$title" --notes "$notes"
+          fi
+
+      - name: Push the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh auth setup-git
+          cd repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The store already offers $GITHUB_REF_NAME"
+            exit 0
+          fi
+          git commit -m "Release $GITHUB_REF_NAME"
+          git push origin HEAD:repo
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

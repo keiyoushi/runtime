@@ -1,0 +1,18 @@
+.gradle
+.kotlin
+build/
+/local.properties
+.idea/
+*.iml
+.DS_Store
+/captures
+# Signing material never goes in git; CI decodes it from secrets
+*.jks
+*.keystore
+# Output of .github/scripts/publish-store.py when run locally
+/repo/
+# Python bytecode from .github/scripts
+__pycache__/
+
+# Output of .github/scripts/webview-official-check.sh when run locally
+/.official-libs/
