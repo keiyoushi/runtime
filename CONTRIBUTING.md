@@ -103,6 +103,20 @@ PR checks do), sign it with the debug key:
 ./gradlew -Pruntime.debugSignRelease=true assembleRelease
 ```
 
+## WebView snapshot check
+
+`webview-snapshot.yml` (daily, on demand, and on `modules/webviewpatch/**` PRs) runs the webviewpatch
+locator against the latest published Chromium **snapshot** WebView, via
+`.github/scripts/webview-snapshot-check.sh` and `SnapshotCheckTest`. It fetches the `Android_Arm64`
+snapshot (arm64-v8a + armeabi-v7a, the production 64+32 ABI layout) and fails when the locator can no
+longer find the X-Requested-With adder — an early warning that a new WebView may stop patching. The
+standalone 32-bit `Android` snapshot is checked too, but only informationally: its non-production
+codegen can diverge from the shipped WebView, so a miss there is logged, not gated. **Limit:** the
+snapshot is a non-official trunk build (no PGO/orderfile), so a pass is a smoke signal, not proof the
+Google-signed Play WebView of that version patches; a fail is worth investigating but can be a
+snapshot-only codegen difference. Run it locally against already-downloaded libs with
+`WORKDIR=... .github/scripts/webview-snapshot-check.sh --local-dir <chromium-snapshots-tree>`.
+
 ## Release
 
 1. Merge a PR that raises `versionCode`. CI checks that it exceeds the latest release's.

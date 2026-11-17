@@ -11,11 +11,14 @@ runtimeModule {
 android {
     testOptions {
         // Forward `-Dxrw.webview-builds=<dir>` from the Gradle command line into the test JVM, as the
-        // builds-gated locator tests' assumeTrue instructs. When it is not set, leave the property unset on the
-        // test JVM (never forward a blank) so those tests skip; the builds (real WebView `.so`s, ~150 MB each)
-        // are never committed.
+        // builds-gated locator tests' assumeTrue instructs. `xrw.snapshot-libs` / `xrw.snapshot-info-libs` do
+        // the same for the Chromium-snapshot smoke check (SnapshotCheckTest). When a property is not set, leave
+        // it unset on the test JVM (never forward a blank) so those tests skip; the builds (real WebView `.so`s,
+        // ~150 MB each) are never committed.
         unitTests.all { test ->
-            System.getProperty("xrw.webview-builds")?.takeIf { it.isNotBlank() }?.let { test.systemProperty("xrw.webview-builds", it) }
+            listOf("xrw.webview-builds", "xrw.snapshot-libs", "xrw.snapshot-info-libs").forEach { prop ->
+                System.getProperty(prop)?.takeIf { it.isNotBlank() }?.let { test.systemProperty(prop, it) }
+            }
         }
     }
 }
