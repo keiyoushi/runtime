@@ -13,3 +13,6 @@ build/
 /repo/
 # Python bytecode from .github/scripts
 __pycache__/
+
+# Output of .github/scripts/webview-official-check.sh when run locally
+/.official-libs/

@@ -1,0 +1,83 @@
+name: WebView official channel check
+
+# Runs the webviewpatch locator against the current Google-signed Android System WebView of the Canary,
+# Dev and Beta channels, as an early warning that a new WebView may stop patching. A failure means: a
+# verified, Google-signed official build was fetched and the locator did not find the X-Requested-With
+# adder in it. A channel the apkpure mirror won't serve, or that fails verification, is skipped (warning),
+# not failed; if every channel is skipped the job passes with a loud warning. See CONTRIBUTING.md.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - modules/webviewpatch/**
+      - .github/workflows/webview-official.yml
+      - .github/scripts/webview-official-check.sh
+      - .github/scripts/apk_meta.py
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Locate the adder in the official channels
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+
+      - name: Resolve the published channel versions
+        id: versions
+        env:
+          CHROMIUMDASH: https://chromiumdash.appspot.com/fetch_releases
+        run: |
+          for ch in Canary Dev Beta; do
+            v=$(curl -sS -L --fail --retry 2 --retry-delay 4 "$CHROMIUMDASH?platform=Webview&channel=$ch&num=1" \
+                 | python3 -I -c 'import json,sys;print(json.load(sys.stdin)[0]["version"])' 2>/dev/null) || v=""
+            echo "${ch,,}=$v" >> "$GITHUB_OUTPUT"
+            echo "$ch=$v"
+          done
+
+      # The resolved versions map 1:1 to the builds' versionCodes, so they key the cache of the extracted
+      # .so files. A new channel version misses the cache and re-fetches; an unchanged one is a hit.
+      - name: Cache the extracted official libs
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: .official-libs
+          key: webview-official-${{ steps.versions.outputs.canary }}-${{ steps.versions.outputs.dev }}-${{ steps.versions.outputs.beta }}
+
+      - name: Locate the adder
+        env:
+          CANARY: ${{ steps.versions.outputs.canary }}
+          DEV: ${{ steps.versions.outputs.dev }}
+          BETA: ${{ steps.versions.outputs.beta }}
+        run: |
+          args=()
+          [ -n "$CANARY" ] && args+=(--version-canary "$CANARY")
+          [ -n "$DEV" ] && args+=(--version-dev "$DEV")
+          [ -n "$BETA" ] && args+=(--version-beta "$BETA")
+          OUTDIR="$GITHUB_WORKSPACE/.official-libs" bash .github/scripts/webview-official-check.sh "${args[@]}"

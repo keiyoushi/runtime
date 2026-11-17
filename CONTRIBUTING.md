@@ -103,19 +103,21 @@ PR checks do), sign it with the debug key:
 ./gradlew -Pruntime.debugSignRelease=true assembleRelease
 ```
 
-## WebView snapshot check
+## WebView official channel check
 
-`webview-snapshot.yml` (daily, on demand, and on `modules/webviewpatch/**` PRs) runs the webviewpatch
-locator against the latest published Chromium **snapshot** WebView, via
-`.github/scripts/webview-snapshot-check.sh` and `SnapshotCheckTest`. It fetches the `Android_Arm64`
-snapshot (arm64-v8a + armeabi-v7a, the production 64+32 ABI layout) and fails when the locator can no
-longer find the X-Requested-With adder — an early warning that a new WebView may stop patching. The
-standalone 32-bit `Android` snapshot is checked too, but only informationally: its non-production
-codegen can diverge from the shipped WebView, so a miss there is logged, not gated. **Limit:** the
-snapshot is a non-official trunk build (no PGO/orderfile), so a pass is a smoke signal, not proof the
-Google-signed Play WebView of that version patches; a fail is worth investigating but can be a
-snapshot-only codegen difference. Run it locally against already-downloaded libs with
-`WORKDIR=... .github/scripts/webview-snapshot-check.sh --local-dir <chromium-snapshots-tree>`.
+`webview-official.yml` (daily, on demand, and on `modules/webviewpatch/**` PRs) runs the locator against
+the current Google-signed Android System WebView of the Canary, Dev and Beta channels — arm64-v8a and the
+armeabi-v7a half of the 64+32 APK, plus the armeabi-v7a-only APK where a channel has one. It resolves each
+version from chromiumdash, then (`.github/scripts/webview-official-check.sh`) fetches the APK from apkpure
+**by HTTP range only** — the signing block, the AndroidManifest, and each `libwebviewchromium.so` — and runs
+`OfficialCheckTest`. apkpure is a third-party mirror; we trust only Google's signature, verifying the signer
+and Play source-stamp certificate digests and the versionName against pinned values before gating a file
+(not a full `apksigner` run, which would mean downloading the whole ~250 MB APK). The job fails only when a
+verified official build is fetched and the locator can no longer find the X-Requested-With adder — an early
+warning that a new WebView may stop patching. A channel the mirror won't serve, or that fails verification,
+is **skipped, not failed** (a warning annotation); if every channel is skipped the job passes with a loud
+warning. Run it locally against already-extracted libs with
+`OUTDIR=/tmp/ol .github/scripts/webview-official-check.sh --local-apk-dir <tree-of-libwebviewchromium.so>`.
 
 ## Release
 
