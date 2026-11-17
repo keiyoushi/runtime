@@ -30,7 +30,7 @@ STORE_NAME = "Keiyoushi Runtime"
 BADGE = "KEI RT"
 WEBSITE = "https://github.com/keiyoushi/runtime"
 DISCORD = "https://discord.gg/3FbCpdKbdY"
-DEFAULT_ICON_URL = "https://cdn.jsdelivr.net/gh/keiyoushi/runtime@main/host/res/mipmap-xhdpi/ic_launcher.png"
+DEFAULT_ICON_URL = "https://cdn.jsdelivr.net/gh/keiyoushi/runtime@main/host/icon/store.png"
 # The scaffold's stand-in key (CN=Keiyoushi Runtime TEMP). The release key is permanent: a runtime
 # signed with this one could never update to the org key without every user reinstalling
 TEMP_KEY_FINGERPRINT = "2216820f57f3d299f59e50420b999b753633d214931448b6b2f90dd5af0935a1"
