@@ -1,37 +1,53 @@
 # Keiyoushi Runtime
 
-Shared code for [Keiyoushi](https://github.com/keiyoushi/extensions-source) extensions, installed
-once as its own extension. Extensions that need a runtime module (for example a WebView patch)
-call it through the small `contract` library they bundle. If the runtime is missing or too old,
-they tell you to install or update it.
+### Please give the repo a :star:
 
-The runtime is an extension APK (package `keiyoushi.runtime`) with no sources. It is also an app:
-its launcher screen shows the version, the modules and their API levels, and the licenses of the
-runtime and of what it bundles.
+| Build                                                                                                                                                                           | Need Help?                                                                                                                                                  |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![CI](https://github.com/keiyoushi/runtime/actions/workflows/release.yml/badge.svg)](https://github.com/keiyoushi/runtime/actions/workflows/release.yml) | [![Discord](https://img.shields.io/discord/1193460528052453448.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/3FbCpdKbdY) |
 
-## Install
+Shared code that some [Keiyoushi extensions](https://github.com/keiyoushi/extensions-source) need, installed once as
+its own extension. If an extension says "Keiyoushi Runtime isn't installed" or asks you to update it, this is what
+it means.
 
-The runtime works with [Mihon](https://mihon.app) only. Setup help:
-[keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).
+## Usage
+**Setup guide: [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).** The runtime works with
+[Mihon](https://mihon.app).
 
-1. Download the APK from the [latest release](https://github.com/keiyoushi/runtime/releases/latest)
-   (always the newest:
-   [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk),
-   or from the docs page) and install it.
-2. Open **Keiyoushi Runtime** from the launcher and tap **Add update store to Mihon** (each
-   installed Mihon build gets its own button). Mihon adds the runtime's store and from then on
-   updates the runtime like any other extension. The store's key matches the APK's, so Mihon
-   trusts the runtime without asking.
+* Download [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk)
+  and install it
+* Open **Keiyoushi Runtime** and tap **Add to Mihon**, so Mihon keeps it up to date
+* Otherwise, add this store in Mihon and install the runtime from Browse → Extensions:
+  https://github.com/keiyoushi/runtime/raw/repo/index.pb
 
-Or add the store first, as the docs page shows, and install from Mihon: in Mihon's extension
-store settings, add
+## Issues
 
-```
-https://github.com/keiyoushi/runtime/raw/repo/index.pb
-```
-
-then install **Keiyoushi Runtime** from Browse → Extensions.
+For a problem with the runtime itself, [create an issue](https://github.com/keiyoushi/runtime/issues/new). For a
+source that needs it, use [extensions-source](https://github.com/keiyoushi/extensions-source/issues/new/choose).
 
 ## Contributing
 
-Building, testing and adding modules: [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome! Building, testing and adding modules: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+    Copyright 2026 Keiyoushi
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+## Disclaimer
+
+This project does not have any affiliation with the content providers available.
+
+This project is not affiliated with Mihon/Tachiyomi. Don't ask for help about the runtime at the official support
+means of Mihon/Tachiyomi.
