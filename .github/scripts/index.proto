@@ -1,8 +1,10 @@
 syntax = "proto3";
 
+// Kept identical in keiyoushi/runtime and keiyoushi/extensions-source (both .github/scripts/index.proto); the schema follows Mihon's NetworkExtensionStore.
+//
 // Upstream source: https://github.com/mihonapp/tachiyomix/blob/e4d546c/index/index.proto
 //
-// divergence: Resources.jarUrl (field 501), Extension.runtimeProvides (field 502)
+// divergence: Resources.jarUrl (field 501), Extension.runtimeProvides (field 502), Extension.runtimeRequires (field 503)
 //
 // Regenerate the Python bindings after editing:
 //   protoc --python_out=. --pyi_out=. index.proto
@@ -36,10 +38,10 @@ message Extension {
   string versionName = 6;
   ContentWarning contentWarning = 7;
   repeated Source sources = 8;
-  // Keiyoushi Runtime modules and the API levels the runtime serves. Field 503 is
-  // extensions-source's index (keiyoushi/extensions-source): the modules an extension needs.
+  // Keiyoushi Runtime modules and the API levels the runtime serves; written only by keiyoushi/runtime.
   map<string, int32> runtimeProvides = 502;
-  reserved 503;
+  // Keiyoushi Runtime modules and the API levels an extension needs; written only by keiyoushi/extensions-source.
+  map<string, int32> runtimeRequires = 503;
 }
 
 message Resources {

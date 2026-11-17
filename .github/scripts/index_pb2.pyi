@@ -49,8 +49,15 @@ class ExtensionList(_message.Message):
     def __init__(self, extensions: _Optional[_Iterable[_Union[Extension, _Mapping]]] = ...) -> None: ...
 
 class Extension(_message.Message):
-    __slots__ = ("name", "packageName", "resources", "extensionLib", "versionCode", "versionName", "contentWarning", "sources", "runtimeProvides")
+    __slots__ = ("name", "packageName", "resources", "extensionLib", "versionCode", "versionName", "contentWarning", "sources", "runtimeProvides", "runtimeRequires")
     class RuntimeProvidesEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: int
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[int] = ...) -> None: ...
+    class RuntimeRequiresEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
         VALUE_FIELD_NUMBER: _ClassVar[int]
@@ -66,6 +73,7 @@ class Extension(_message.Message):
     CONTENTWARNING_FIELD_NUMBER: _ClassVar[int]
     SOURCES_FIELD_NUMBER: _ClassVar[int]
     RUNTIMEPROVIDES_FIELD_NUMBER: _ClassVar[int]
+    RUNTIMEREQUIRES_FIELD_NUMBER: _ClassVar[int]
     name: str
     packageName: str
     resources: Resources
@@ -75,7 +83,8 @@ class Extension(_message.Message):
     contentWarning: ContentWarning
     sources: _containers.RepeatedCompositeFieldContainer[Source]
     runtimeProvides: _containers.ScalarMap[str, int]
-    def __init__(self, name: _Optional[str] = ..., packageName: _Optional[str] = ..., resources: _Optional[_Union[Resources, _Mapping]] = ..., extensionLib: _Optional[str] = ..., versionCode: _Optional[int] = ..., versionName: _Optional[str] = ..., contentWarning: _Optional[_Union[ContentWarning, str]] = ..., sources: _Optional[_Iterable[_Union[Source, _Mapping]]] = ..., runtimeProvides: _Optional[_Mapping[str, int]] = ...) -> None: ...
+    runtimeRequires: _containers.ScalarMap[str, int]
+    def __init__(self, name: _Optional[str] = ..., packageName: _Optional[str] = ..., resources: _Optional[_Union[Resources, _Mapping]] = ..., extensionLib: _Optional[str] = ..., versionCode: _Optional[int] = ..., versionName: _Optional[str] = ..., contentWarning: _Optional[_Union[ContentWarning, str]] = ..., sources: _Optional[_Iterable[_Union[Source, _Mapping]]] = ..., runtimeProvides: _Optional[_Mapping[str, int]] = ..., runtimeRequires: _Optional[_Mapping[str, int]] = ...) -> None: ...
 
 class Resources(_message.Message):
     __slots__ = ("apkUrl", "iconUrl", "jarUrl")
