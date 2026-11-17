@@ -33,7 +33,7 @@ class RuntimeModule(val name: String, val api: Int) {
     fun <T : RuntimeContract> bind(contract: Class<T>): T {
         require(contract.isInterface) { "${contract.name} must be an interface" }
         resolve().methodsFor(contract)
-        return contract.cast(proxies.getOrPut(contract) { newProxy(contract) })
+        return contract.cast(proxies.getOrPut(contract) { newProxy(contract) })!!
     }
 
     /**
