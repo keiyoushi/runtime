@@ -11,13 +11,13 @@ its own extension. If an extension says "Keiyoushi Runtime isn't installed" or a
 it means.
 
 ## Usage
-**Setup guide: [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).** The runtime works with
-[Mihon](https://mihon.app).
+**Setup guide: [keiyoushi.github.io/runtime](https://keiyoushi.github.io/runtime).** The runtime works in the same
+apps as Keiyoushi's extensions.
 
 * Download [keiyoushi-runtime.apk](https://github.com/keiyoushi/runtime/releases/latest/download/keiyoushi-runtime.apk)
   and install it
-* Open **Keiyoushi Runtime** and tap **Add to Mihon**, so Mihon keeps it up to date
-* Otherwise, add this store in Mihon and install the runtime from Browse → Extensions:
+* Open **Keiyoushi Runtime** and tap **Add to** your app (e.g. **Add to Mihon**), so the app keeps it up to date
+* Otherwise, add this store in your app and install the runtime from Browse → Extensions:
   https://github.com/keiyoushi/runtime/raw/repo/index.pb
 
 ## Issues
