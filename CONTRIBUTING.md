@@ -143,6 +143,8 @@ JitPack builds the `contract` and `api-*` artifacts for a tag when someone first
 (`jitpack.yml`; PR checks run the same `publishToMavenLocal`). Consumers can also request a
 commit hash instead of a tag (`com.github.keiyoushi.runtime:contract:<commit>`), so a fix to
 the published libraries alone doesn't need a runtime release.
+After a release, `release.yml` requests the tag's artifacts until JitPack serves them, so
+Renovate's pin bump in extensions-source resolves them at once.
 
 The signing secrets (`KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) belong in
 the `release` environment (Settings → Environments), not in the repository's secrets. A repo
