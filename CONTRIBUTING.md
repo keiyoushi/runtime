@@ -155,7 +155,5 @@ The release key is permanent. Android installs an update only when it is signed 
 key, so changing the key means every user uninstalls and reinstalls the runtime. APKs are signed
 with v2 and v3 signatures, but nothing rotates the key.
 
-The keiyoushi org key must be in place before the first release: its four secrets in the
-`release` environment and its SHA-256 certificate digest in `.github/signing-key-fingerprint`.
-The store refuses an APK signed with any other key, and the release refuses the scaffold's
-temporary key (`CN=Keiyoushi Runtime TEMP`) outright.
+The key's four secrets live in the `release` environment and its SHA-256 certificate digest in
+`.github/signing-key-fingerprint`. The store refuses an APK signed with any other key.

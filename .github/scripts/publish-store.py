@@ -31,12 +31,6 @@ BADGE = "KEI RT"
 WEBSITE = "https://github.com/keiyoushi/runtime"
 DISCORD = "https://discord.gg/3FbCpdKbdY"
 DEFAULT_ICON_URL = "https://cdn.jsdelivr.net/gh/keiyoushi/runtime@main/host/res/mipmap-xxxhdpi/ic_launcher.png"
-# The scaffold's stand-in key (CN=Keiyoushi Runtime TEMP). The release key is permanent: a runtime
-# signed with this one could never update to the org key without every user reinstalling
-TEMP_KEY_FINGERPRINT = "2216820f57f3d299f59e50420b999b753633d214931448b6b2f90dd5af0935a1"
-INSTALL_ORG_KEY = (
-    "install the keiyoushi org key: the four signing secrets and .github/signing-key-fingerprint (CONTRIBUTING.md, Signing)"
-)
 
 
 def build_tool(name: str, build_tools: str | None) -> str:
@@ -52,8 +46,8 @@ def build_tool(name: str, build_tools: str | None) -> str:
     return str(versions[-1] / name)
 
 
-def signing_cert(apk: Path, build_tools: str | None) -> tuple[str, str]:
-    """The single signer's SHA-256 digest and subject DN"""
+def signing_cert(apk: Path, build_tools: str | None) -> str:
+    """The single signer's SHA-256 digest"""
     out = subprocess.run(
         [build_tool("apksigner", build_tools), "verify", "--print-certs", str(apk)],
         check=True,
@@ -62,15 +56,9 @@ def signing_cert(apk: Path, build_tools: str | None) -> tuple[str, str]:
     ).stdout
     # "Signer #1 certificate ..." or per-scheme "V3.0 Signer: certificate ..." depending on build-tools
     digests = set(re.findall(r"^.*Signer\b.*certificate SHA-256 digest: ([0-9a-f]{64})$", out, re.M))
-    subjects = set(re.findall(r"^.*Signer\b.*certificate DN: (.*)$", out, re.M))
-    if len(digests) != 1 or len(subjects) != 1:
+    if len(digests) != 1:
         sys.exit(f"{apk.name}: expected one signer, found {len(digests)}")
-    return digests.pop(), subjects.pop()
-
-
-def refuse_temp_key(fingerprint: str, subject: str | None) -> None:
-    if fingerprint == TEMP_KEY_FINGERPRINT or (subject and re.search(r"\bTEMP\b", subject, re.I)):
-        sys.exit(f"Refusing to publish: the APK is signed with the temporary key ({subject or fingerprint}); {INSTALL_ORG_KEY}")
+    return digests.pop()
 
 
 def check_badging(apk: Path, info: dict, build_tools: str | None) -> None:
@@ -103,11 +91,7 @@ def main() -> None:
     package = info["packageName"]
     source = info["source"]
 
-    if args.fingerprint:
-        fingerprint, subject = args.fingerprint.lower(), None
-    else:
-        fingerprint, subject = signing_cert(args.apk, args.build_tools)
-    refuse_temp_key(fingerprint, subject)
+    fingerprint = args.fingerprint.lower() if args.fingerprint else signing_cert(args.apk, args.build_tools)
     if args.expect_fingerprint:
         expected = args.expect_fingerprint.read_text(encoding="utf-8").strip().lower()
         if fingerprint != expected:

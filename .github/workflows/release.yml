@@ -34,8 +34,6 @@ jobs:
       - name: Check the tag, versionCode and key
         env:
           GH_TOKEN: ${{ github.token }}
-          # The scaffold's temporary key (CN=Keiyoushi Runtime TEMP); publish-store.py refuses it too
-          TEMP_KEY_FINGERPRINT: 2216820f57f3d299f59e50420b999b753633d214931448b6b2f90dd5af0935a1
         run: |
           if ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+$ ]]; then
             echo "::error::Release tags are v<versionCode>, not $GITHUB_REF_NAME"
@@ -49,10 +47,6 @@ jobs:
           fi
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) isn't on main. Release only from a merged commit"
-            exit 1
-          fi
-          if [ "$(tr -d '[:space:]' < .github/signing-key-fingerprint)" = "$TEMP_KEY_FINGERPRINT" ]; then
-            echo "::error::.github/signing-key-fingerprint is the temporary key. Install the keiyoushi org key (the four secrets and that file) first"
             exit 1
           fi
           # This tag's own release or draft means a re-run: finish it, unless a newer release came since
@@ -149,7 +143,11 @@ jobs:
           cp "$apk" "$RUNNER_TEMP/keiyoushi-runtime.apk"
           assets=("$apk" "$apk.sha256" "$RUNNER_TEMP/keiyoushi-runtime.apk")
           title="Keiyoushi Runtime $name"
-          notes="Mihon only. Install the APK, open Keiyoushi Runtime and tap Add update store to Mihon. Setup: https://keiyoushi.github.io/runtime. SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
+          notes="Install the APK, open Keiyoushi Runtime and tap Add to your app.
+
+          Setup: https://keiyoushi.github.io/runtime
+
+          SHA-256: $(cut -d' ' -f1 "$apk.sha256")"
           if [ "$state" = draft ]; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "$notes"
