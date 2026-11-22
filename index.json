@@ -1,0 +1,33 @@
+{
+  "name": "Keiyoushi Runtime",
+  "badgeLabel": "KEI RT",
+  "signingKey": "ce25215b0cb61ae4de7ea430febf8abefa097f4a254eb422762843d7b658f582",
+  "contact": {
+    "website": "https://github.com/keiyoushi/runtime",
+    "discord": "https://discord.gg/3FbCpdKbdY"
+  },
+  "extensionList": {
+    "extensions": [
+      {
+        "name": "Keiyoushi Runtime",
+        "packageName": "keiyoushi.runtime",
+        "resources": {
+          "apkUrl": "https://github.com/keiyoushi/runtime/releases/download/v1/keiyoushi-runtime-v1.6.1.apk",
+          "iconUrl": "https://cdn.jsdelivr.net/gh/keiyoushi/runtime@3adb94352fac40ba07b6ff63519f523c23665e05/host/res/mipmap-xxxhdpi/ic_launcher.png"
+        },
+        "extensionLib": "1.6",
+        "versionCode": "1",
+        "versionName": "1.6.1",
+        "contentWarning": "CONTENT_WARNING_SAFE",
+        "sources": [
+          {
+            "id": "1071724096826203713",
+            "name": "Keiyoushi Runtime",
+            "language": "all",
+            "homeUrl": "https://github.com/keiyoushi/runtime"
+          }
+        ]
+      }
+    ]
+  }
+}
