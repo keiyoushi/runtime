@@ -176,3 +176,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
+  # JitPack builds a tag on its first request, which can outlast a Gradle download timeout. Ask for it here, so the
+  # extensions-source pin bump (opened by Renovate on the new release) resolves the artifacts at once.
+  jitpack:
+    name: Build the artifacts on JitPack
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Request the tag's artifacts until JitPack serves them
+        run: |
+          base="https://jitpack.io/com/github/${GITHUB_REPOSITORY%%/*}/${GITHUB_REPOSITORY#*/}"
+          modules=(contract)
+          for dir in api/*/; do modules+=("api-$(basename "$dir")"); done
+          for module in "${modules[@]}"; do
+            url="$base/$module/$GITHUB_REF_NAME/$module-$GITHUB_REF_NAME.pom"
+            for _ in $(seq 1 25); do
+              if curl -sf -o /dev/null --max-time 300 "$url"; then
+                echo "$module $GITHUB_REF_NAME is on JitPack"
+                continue 2
+              fi
+              sleep 60
+            done
+            echo "::error::JitPack doesn't serve $module $GITHUB_REF_NAME: https://jitpack.io/com/github/${GITHUB_REPOSITORY}/$GITHUB_REF_NAME/build.log"
+            exit 1
+          done
